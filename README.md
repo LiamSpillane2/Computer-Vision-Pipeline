@@ -11,4 +11,4 @@ Code repository for the BDSC Computer Vision Pipeline project.
 
   ## Quick Start
 
-  ### Installations
+  ## Installations
