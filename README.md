@@ -10,5 +10,10 @@ Code repository for the BDSC Computer Vision Pipeline project.
 ## Tech Stack
 
 ## Quick Start
+### Prerequisites
+### Installations
+**Clone the repository**
 
-## Installations
+Development
+
+Repository Structure
