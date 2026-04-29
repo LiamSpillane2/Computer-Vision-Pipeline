@@ -5,10 +5,10 @@ Code repository for the BDSC Computer Vision Pipeline project.
 - Develop a flexible architecture for implementing image classification models
 - Demonstrate use of the pipeline on sample datasets
 
-  ## Features
+## Features
 
-  ## Tech Stack
+## Tech Stack
 
-  ## Quick Start
+## Quick Start
 
-  ## Installations
+## Installations
