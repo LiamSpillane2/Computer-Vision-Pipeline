@@ -7,9 +7,10 @@ name = "pypi"
 pandas = "*"
 scikit-learn = "*"
 pillow = "*"
-matplotlib = "*"
 ipykernel = "*"
 torch = "*"
+matplotlib = "*"
+seaborn = "*"
 
 [dev-packages]
 
