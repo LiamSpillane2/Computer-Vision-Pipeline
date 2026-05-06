@@ -38,6 +38,7 @@ Computer-Vision-Pipeline/
 │   ├── models/                   # Scripts to train and run models
 │   └── preprocessing/            # Scripts to prepare data for model ingestion
 ├── tests/                        # Unit and integration tests
+├── utils/                        # General use utility scripts
 ├── .gitignore                    # Filename patterns to exclude
 ├── CHANGE_LOG.md                 # Information on major changes
 ├── CODE_OF_CONDUCT.md            # Conduct guidelines
