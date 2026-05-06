@@ -38,7 +38,8 @@ Computer-Vision-Pipeline/
 │   ├── models/                   # Scripts to train and run models
 │   └── preprocessing/            # Scripts to prepare data for model ingestion
 ├── tests/                        # Unit and integration tests
-├── .gitignore                    # gitignore file
+├── .gitignore                    # Filename patterns to exclude
+├── CHANGE_LOG.md                 # Information on major changes
 ├── CODE_OF_CONDUCT.md            # Conduct guidelines
 ├── Pipfile                       # Pipenv environment configuration file
 ├── Pipfile.lock                  # Pipenv environment lock file
