@@ -13,8 +13,7 @@ Code repository for the BDSC Computer Vision Pipeline project.
 ## Quick Start
   - How to setup the environment to get up and running
   - Download git via Git.com
-  - Using the terminal in the IDE, use git clone <git_url> 
-  -  Once cloned, use “git add .” to obtain the folders/files
+  - Using the terminal in the IDE, use git clone <https://github.com/LiamSpillane2/Computer-Vision-Pipeline.git>
   - Inside that git url will be the pipfile/pipfile.lock
 
 ### Prerequisites
