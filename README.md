@@ -11,14 +11,12 @@ Code repository for the BDSC Computer Vision Pipeline project.
 ### Built with
   - list of programs used to create project
 
-### Set Up
-## Prerequisites
-This project assumes you have the following installed:
+## Quick Start
+This project assumes you have the following software installed:
   - Git
   - Python (>= 3.14)
     - pipenv (>= 2026.5.2)
-## Quick Start
-  - How to setup the environment to get up and running
+### Setup
   - Using the terminal in the IDE, run `git clone https://github.com/LiamSpillane2/Computer-Vision-Pipeline.git`
   - Inside that git url will be the files `Pipfile` and `Pipfile.lock`
   - Using the terminal in the IDE, run `pipenv install`
