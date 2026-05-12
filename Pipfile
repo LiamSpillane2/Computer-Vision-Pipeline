@@ -11,6 +11,7 @@ ipykernel = "*"
 torch = "*"
 matplotlib = "*"
 seaborn = "*"
+opencv-python = "*"
 
 [dev-packages]
 
