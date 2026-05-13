@@ -12,6 +12,9 @@ torch = "*"
 matplotlib = "*"
 seaborn = "*"
 opencv-python = "*"
+torchvision = "*"
+requests = "*"
+transformers = "*"
 
 [dev-packages]
 
