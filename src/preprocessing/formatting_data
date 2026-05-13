@@ -1,0 +1,40 @@
+import shutil
+import os
+
+def rename_and_copy_all(base_input_dir, base_output_dir):
+    
+    ##Loops over test/train/valid subfolders and renames all images in each.
+    
+    folders = ["test", "train", "valid"]
+    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
+
+    for folder_name in folders:
+        source_folder = os.path.join(base_input_dir, folder_name, "images")
+
+        if not os.path.exists(source_folder):
+            print(f"Skipping '{folder_name}' — folder not found.")
+            continue
+
+        image_files = sorted([
+            f for f in os.listdir(source_folder)
+            if os.path.splitext(f)[1].lower() in image_extensions
+        ])
+
+        output_folder = os.path.join(base_output_dir, folder_name, "images")
+        os.makedirs(output_folder, exist_ok=True)
+
+        for i, filename in enumerate(image_files, start=1):
+            ext = os.path.splitext(filename)[1].lower()
+            new_name = f"lp_{folder_name}_image{str(i).zfill(3)}{ext}"
+
+            src = os.path.join(source_folder, filename)
+            dst = os.path.join(output_folder, new_name)
+
+            shutil.copy2(src, dst)
+            print(f"[{folder_name}] {filename}  →  {new_name}")
+
+# --- Usage ---
+#rename_and_copy_all(
+#    base_input_dir= r"C:\Users\Installer\Documents\Computer-Vision-Pipeline\data\license_plate_detection",
+#    base_output_dir= r"C:\Users\Installer\Documents\Computer-Vision-Pipeline\data\formatted\license_plate_detection"
+#)
