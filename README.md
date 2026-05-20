@@ -99,38 +99,17 @@ All development work should be completed within the sprint branch
 ## Pull Request Process 
 When developement and testing are complete, developers should submit a pull request into the main branch for review and approval.
 
-1. Fetch latest remote updates
-   ```git
-   git fetch origin
-   ```
-2. Switch to main branch
-   ```git
-   git checkout main
-   ```
-3. Update local main branch
-   ```git
-   git pull origin main
-   ```
-4. Switch back to the sprint branch
-   ```git
-   git checkout <feature-branch-name>
-   ```
-5. Merge updated main into the sprint branch
-   ```git
-   git merge main
-   ```
-6. Resolve conflicts if necessary
-   ```git
-   git add .
-   git commit -m "Example wording"
-   ```
-7. Push updated sprint branch
+1. Push sprint branch to remote repo
    ```git
    git push origin <feature-branch-name>
    ```
-8. Create Pull Request
+**Example:**
+   ```git
+   git push origin Sprint2_model1_training
+   ```
+2. Create Pull Request using Github CLI
 
-**Automatic pull request generation**
+**Automatic Pull Request generation**
    Open a pull request from the sprint branch into main for code review and approval.
    ```git
    gh pr create --fill
@@ -138,7 +117,7 @@ When developement and testing are complete, developers should submit a pull requ
 
    --fill will automatically attempt to fill in the the title and body using commit history
 
-   **Manual pull Request creation** 
+   **Manual Pull Request creation** 
    ```git
    gh pr create --base main --head <naming convention> \
    --title " " \
@@ -160,16 +139,10 @@ git checkout -b Sprint2_model1_training
 
 # Development work happens here
 
-git fetch origin
-git checkout main
-git pull origin main
-git checkout Sprint2_model1_training
-git merge main
-
-# Resolve conflicts if necessary
-
 git add .
 git commit - m "Example text"
 git push origin Sprint2_model1_training
+
+gh pr create --fill
 ```
 Create a pull request into main for the repo Admin to approve 
