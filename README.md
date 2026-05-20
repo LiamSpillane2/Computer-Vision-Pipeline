@@ -14,11 +14,11 @@ The following technologies are utilized in this project:
 
 ## Quick Start
 This project assumes you have the following software installed:
-  - Git
   - A command line interface (CLI)
+  - Git
+  - GitHub CLI
   - Python (>= 3.14)
     - pipenv (>= 2026.5.2)
-  - GH CLI (Github CLI for PR commands)
 
 ### Setup
   - Open a new CLI instance in the desired file location
@@ -48,50 +48,49 @@ Computer-Vision-Pipeline/
 └── README.md                     # Project description and setup instructions
 ```
 ***
-# BDSC - Computer Vision Project - Github Branching Strategy
+# GitHub Branching Strategy
 
-## Branching Strategy
-
-A branching strategy defines how developers create, manage and merge branches in a version control system like Git to ensure smooth collaboration and organized code development. Provides clear rules for writing, merging and deploying code, and helps keep the repository structured and maintainable.  The goal is to reduce merge conflicts when multiple developers work simultaneously.
+A branching strategy defines how developers create, manage, and merge branches in a version control system - like GitHub - to ensure smooth collaboration and organized code development. It provides clear rules for writing, merging, and deploying code, and helps keep the repository structured and maintainable. The goal of a branching strategy is to reduce merge conflicts when multiple developers are working simultaneously.
 
 ## Strategy Selection
 
-The Computer Vision Project development team will utilize a structure similar to git flow.
+The Computer Vision Project development team will utilize a structure similar to GitHub Flow.
 
 ### Branching
 
-**main**: Represent the primary and production-ready branch of the repository. All approved and tested code changes are merged into main through pull requests.
+**main**: Represents the primary and production-ready branch of the repository. All approved and tested code changes are merged into `main` through pull requests.
 
-**Sprint branches**: Created directly from the main branch for feature developement during a sprint. After developement and testing are completed, the print branch branch is merged back into main through a pull request.
+**Sprint branches**: Created directly from the main branch for feature development during a sprint. After feature development and testing is completed, the sprint branch is merged back into `main` through a pull request.
 
-**Naming Convention**: <sprint#_feature> Ex. Sprint2_model1_training
+**Naming Convention**: <Sprint#_feature_name> Ex. Sprint2_model1_training
 
 ```mermaid
 gitGraph
-   commit id: "Initial Commit"
-   commit id: "Project Setup"
+commit id: "Initial Commit"
+commit id: "Project Setup"
 
-   branch Sprint2_model1_training
-   checkout Sprint2_model1_training
-   commit id: "feature1"
-   commit id: "feature2"
-   commit id: "model training updates"
+branch Sprint2_model1_training
+checkout Sprint2_model1_training
+commit id: "model training updates"
+commit id: "more model training updates"
 
-   checkout main
-   merge Sprint2_model1_training
-   commit id: "Release to Production"
+checkout main
+merge Sprint2_model1_training
+commit id: "Release to Production"
 ```
+
 ***
 ## Git Workflow
 
-**Creating a Sprint Branch**
+### Creating a Sprint Branch
 
-Developers create a new sprint branch from main using:
+Developers can create a new sprint branch from `main` using the following CLI commands:
 ```git
+git pull
 git checkout main
-git pull origin main
-git checkout -b <new-branch>
+git checkout -b <new-branch-name>
 ```
+
 **Example**:
 ```git
 git checkout -b Sprint2_model1_training
@@ -100,52 +99,42 @@ git checkout -b Sprint2_model1_training
 All development work should be completed within the sprint branch
 
 ## Pull Request Process 
-When developement and testing are complete, developers should submit a pull request into the main branch for review and approval.
+Once feature development and testing is complete, developers should create a pull request so their sprint branch can be reviewed and approved for merging into `main`.
 
-1. Push sprint branch to remote repo
-   ```git
-   git push origin <feature-branch-name>
-   ```
-    **Example:**
-     ```git
-     git push origin Sprint2_model1_training
-     ```
-2. Create Pull Request using Github CLI
+1. **Commit sprint branch in remote repo**
+    ```git
+    git commit -m "<commit-message>"
+    ```
 
-    **Automatic Pull Request generation**
-     Open a pull request from the sprint branch into main for code review and approval.
-     ```git
-     gh pr create --fill
-     ```
+2. **Create pull request using GitHub CLI**
+
+    *Automatic Pull Request Creation*
+    ```git
+    gh pr create --fill
+    ```
   
-     --fill will automatically attempt to fill in the the title and body using commit history
+    `--fill` will attempt to automatically fill in the base, head, title, and body values using commit history.
   
-    **Manual Pull Request creation** 
-     ```git
-     gh pr create --base main --head <naming convention> \
-     --title " " \
-     --body " "
-     ```
+    *Manual Pull Request Creation* 
+    ```git
+    gh pr create --base main --head <branch-name> --title "<title>" --body "<body>"
+    ```
 
 **Branch Retention Policy**
-Sprint branches may remain in the repoisitory after merging unless the team decides they are no longer needed.
 
-Avoid automatic deletion commands unless approved by the team:
-```git
-git branch -d <branch-name>
-```
+Sprint branches may be deleted immediately upon merging, but can be retained for future use if deemed necessary.
+
 ## Example Workflow
 ```git
-git checkout main
 git pull
+git checkout main
 git checkout -b Sprint2_model1_training
 
-# Development work happens here
+...
+<development-work>
+...
 
-git add .
+git add -A
 git commit -m "Example text"
-git push origin Sprint2_model1_training
-
 gh pr create --fill
 ```
-Create a pull request into main for the repo Admin to approve 
