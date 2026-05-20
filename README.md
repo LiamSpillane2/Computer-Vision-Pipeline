@@ -18,6 +18,7 @@ This project assumes you have the following software installed:
   - A command line interface (CLI)
   - Python (>= 3.14)
     - pipenv (>= 2026.5.2)
+  - GH CLI (Github CLI for PR commands)
 
 ### Setup
   - Open a new CLI instance in the desired file location
@@ -59,51 +60,92 @@ The Computer Vision Project development team will utilize a structure similar to
 
 ### Branching
 
-Features of the flow
+**main**: Represent the primary and production-ready branch of the repository. All approved and tested code changes are merged into main through pull requests.
 
-**Master**: Represent the production-ready state of code.
+**Sprint branches**: Created directly from the main branch for feature developement during a sprint. After developement and testing are completed, the print branch branch is merged back into main through a pull request.
 
-**Develop**: Represents the latest development changes.
-
-**Sprint branches**: Are created from the develop branch for sprint work on features, merged back to develop after completion, and then deleted by the developer after merged if not needed.
+**Naming Convention**: <sprint#_feature> Ex. Sprint2_model1_training
 
 ```mermaid
-   gitGraph
+gitGraph
    commit id: "Initial Commit"
-   commit id: " "
-   branch develop
-   checkout develop
-   branch sprint
-   checkout sprint
+   commit id: "Project Setup"
+
+   branch Sprint2_model1_training
+   checkout Sprint2_model1_training
    commit id: "feature1"
    commit id: "feature2"
-   checkout develop
-   merge sprint
+   commit id: "model training updates"
+
    checkout main
-   merge develop
+   merge Sprint2_model1_training
    commit id: "Release to Production"
 ```
 ***
-## Git Strategy
-Git uses the following command to checkout and switch to a new branch.  Our team will create a new branch off the develop branch with the following ***naming convention:*** <sprint#_feature> ex. (***Sprint2_model1_training***, ***Sprint3_model2_fitting***)
-```git
-    git checkout -b <new-branch>
-```
-The developer/s will do their work off the \<new-branch\>.  When testing is completed and ready for deployment, the added sprint branch will be merged back to the develop branch.  
+## Git Workflow
 
-1. Run git fetch origin to get the latest changes from the remote.
-2. Switch to the dev branch for merge.
-3. Update it with git pull origin dev.
-4. Merge the sprint branch with git merge ***feature-branch-name***.
-5. Resolve any merge conflicts if prompted, then git add and git commit the resolutions.
-6. Push the updated branch to the BDSC remote repository with git push origin dev.
-7. Do not run any branch deletion commands (e.g., git branch -d)—this keeps the source branch intact.
+**Creating a Sprint Branch**
 
+Developers create a new sprint branch from main using:
 ```git
-   git fetch origin dev
-   git checkout dev
-   git merge feature-branch-name
-   git add
-   git commit
-   git push origin dev
+git checkout main
+git pull origin main
+git checkout -b <new-branch>
 ```
+**Example**:
+```git
+git checkout -b Sprint2_model1_training
+```
+
+All development work should be completed within the sprint branch
+
+## Pull Request Process 
+When developement and testing are complete, developers should submit a pull request into the main branch for review and approval.
+
+1. Push sprint branch to remote repo
+   ```git
+   git push origin <feature-branch-name>
+   ```
+    **Example:**
+     ```git
+     git push origin Sprint2_model1_training
+     ```
+2. Create Pull Request using Github CLI
+
+    **Automatic Pull Request generation**
+     Open a pull request from the sprint branch into main for code review and approval.
+     ```git
+     gh pr create --fill
+     ```
+  
+     --fill will automatically attempt to fill in the the title and body using commit history
+  
+    **Manual Pull Request creation** 
+     ```git
+     gh pr create --base main --head <naming convention> \
+     --title " " \
+     --body " "
+     ```
+
+**Branch Retention Policy**
+Sprint branches may remain in the repoisitory after merging unless the team decides they are no longer needed.
+
+Avoid automatic deletion commands unless approved by the team:
+```git
+git branch -d <branch-name>
+```
+## Example Workflow
+```git
+git checkout main
+git pull
+git checkout -b Sprint2_model1_training
+
+# Development work happens here
+
+git add .
+git commit -m "Example text"
+git push origin Sprint2_model1_training
+
+gh pr create --fill
+```
+Create a pull request into main for the repo Admin to approve 
