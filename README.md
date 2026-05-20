@@ -86,8 +86,8 @@ commit id: "Release to Production"
 
 Developers can create a new sprint branch from `main` using the following CLI commands:
 ```git
-git pull
 git checkout main
+git pull
 git checkout -b <new-branch-name>
 ```
 
@@ -127,8 +127,8 @@ Sprint branches may be deleted immediately upon merging, but can be retained for
 
 ## Example Workflow
 ```git
-git pull
 git checkout main
+git pull
 git checkout -b Sprint2_model1_training
 
 ...
