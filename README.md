@@ -92,7 +92,10 @@ git checkout main
 git pull origin main
 git checkout -b <new-branch>
 ```
-*Example*: git checkout -b Sprint2_model1_training
+**Example**:
+```git
+git checkout -b Sprint2_model1_training
+```
 
 All development work should be completed within the sprint branch
 
@@ -103,26 +106,26 @@ When developement and testing are complete, developers should submit a pull requ
    ```git
    git push origin <feature-branch-name>
    ```
-**Example:**
-   ```git
-   git push origin Sprint2_model1_training
-   ```
+    **Example:**
+     ```git
+     git push origin Sprint2_model1_training
+     ```
 2. Create Pull Request using Github CLI
 
-**Automatic Pull Request generation**
-   Open a pull request from the sprint branch into main for code review and approval.
-   ```git
-   gh pr create --fill
-   ```
-
-   --fill will automatically attempt to fill in the the title and body using commit history
-
-   **Manual Pull Request creation** 
-   ```git
-   gh pr create --base main --head <naming convention> \
-   --title " " \
-   --body " "
-  ```
+    **Automatic Pull Request generation**
+     Open a pull request from the sprint branch into main for code review and approval.
+     ```git
+     gh pr create --fill
+     ```
+  
+     --fill will automatically attempt to fill in the the title and body using commit history
+  
+    **Manual Pull Request creation** 
+     ```git
+     gh pr create --base main --head <naming convention> \
+     --title " " \
+     --body " "
+     ```
 
 **Branch Retention Policy**
 Sprint branches may remain in the repoisitory after merging unless the team decides they are no longer needed.
@@ -134,13 +137,13 @@ git branch -d <branch-name>
 ## Example Workflow
 ```git
 git checkout main
-git pull origin main
+git pull
 git checkout -b Sprint2_model1_training
 
 # Development work happens here
 
 git add .
-git commit - m "Example text"
+git commit -m "Example text"
 git push origin Sprint2_model1_training
 
 gh pr create --fill
