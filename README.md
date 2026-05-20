@@ -104,6 +104,7 @@ Once feature development and testing is complete, developers should create a pul
 1. **Commit sprint branch in remote repo**
     ```git
     git commit -m "<commit-message>"
+    git push origin <branch-name>
     ```
 
 2. **Create pull request using GitHub CLI**
@@ -136,5 +137,6 @@ git checkout -b Sprint2_model1_training
 
 git add -A
 git commit -m "Example text"
+git push origin Sprint2_model1_training
 gh pr create --fill
 ```
