@@ -15,6 +15,7 @@ opencv-python = "*"
 torchvision = "*"
 requests = "*"
 transformers = "*"
+scikit-image = "*"
 
 [dev-packages]
 
