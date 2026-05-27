@@ -123,7 +123,11 @@ Once feature development and testing is complete, developers should create a pul
 
 **Branch Retention Policy**
 
-Sprint branches may be deleted immediately upon merging, but can be retained for future use if deemed necessary.
+Sprint branches may be deleted immediately upon merging, but can be retained for future use if deemed necessary. Merged sprint branches can be deleted using the following sequence of commands:
+```git
+git checkout main
+git branch -d <branch-name>
+```
 
 ## Example Workflow
 ```git
@@ -139,4 +143,11 @@ git add -A
 git commit -m "Example text"
 git push origin Sprint2_model1_training
 gh pr create --fill
+
+...
+<branch-merged>
+...
+
+git checkout main
+git branch -d Sprint2_model1_training
 ```
