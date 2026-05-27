@@ -25,7 +25,7 @@ def rename_and_copy_all(base_input_dir, base_output_dir, dataset):
 
         for i, filename in enumerate(image_files, start=1):
             ext = os.path.splitext(filename)[1].lower()
-            new_name = f"{dataset}_{folder_name}_image{str(i).zfill(3)}{ext}"
+            new_name = f"{dataset}_{folder_name}_{str(i).zfill(3)}{ext}"
 
             src = os.path.join(source_folder, filename)
             dst = os.path.join(output_folder, new_name)
@@ -59,7 +59,7 @@ def rename_copy_and_add_headers_all(base_input_dir, base_output_dir, headers, da
         os.makedirs(output_folder, exist_ok=True)
 
         for i, filename in enumerate(txt_files, start=1):
-            new_name = f"{dataset}_{folder_name}_label{i}.txt"
+            new_name = f"{dataset}_{folder_name}_{str(i).zfill(3)}.txt"
 
             src = os.path.join(source_folder, filename)
             dst = os.path.join(output_folder, new_name)
@@ -131,7 +131,7 @@ def convert_labels_all(base_input_dir, base_output_dir, dataset):
         os.makedirs(output_folder, exist_ok=True)
 
         for i, filename in enumerate(txt_files, start=1):
-            new_name = f"{dataset}_{folder_name}_label{i}.txt"
+            new_name = f"{dataset}_{folder_name}_{str(i).zfill(3)}.txt"
 
             src = os.path.join(source_folder, filename)
             dst = os.path.join(output_folder, new_name)
