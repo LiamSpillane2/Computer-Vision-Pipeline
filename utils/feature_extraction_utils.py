@@ -29,7 +29,11 @@ def load_images(directory, num_img = 1, use_rand = True, seed = 42, gs = True, n
             -True: returned array is normalized (0-1)
             -False: returned array is raw GS or RGB values (0-255)
 
-    Returns: numpy array (or list of arrays) representing image(s)
+        -img_obj: (default = False)
+            - False: returns numpy array of image
+            - True: returns Pillow image object
+
+    Returns: array(s) or pillow object(s) representing image(s)
     
     Raises: 
         -WindowsError: if directory is not valid
@@ -81,62 +85,42 @@ def load_images(directory, num_img = 1, use_rand = True, seed = 42, gs = True, n
         else:
             return img_arrays
 
-
     except WindowsError as e:
         return "Directory Not Valid"
     except Exception as e:
         print(e)
 
-def get_image_embeddings(img_arr):
-
-    os.environ["HF_HUB_VERBOSITY"] = "error"
-    warnings.filterwarnings("ignore", category=UserWarning)
-    # 2. Suppress the Windows symlink warning
-    os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
-    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
-    warnings.filterwarnings("ignore", category=UserWarning)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device {device}")
-
-    # VERIFIED REPO STR: Native Google-backed checkpoint on HF
-    processor = AutoImageProcessor.from_pretrained("google/mobilenet_v2_1.0_224")
-    model = AutoModel.from_pretrained("google/mobilenet_v2_1.0_224").to(device)
-
-    inputs = processor(img_arr, return_tensors="pt").to(device)
-    
-    with torch.no_grad():
-        outputs = model(**inputs)
-    
-    # MobileNetV2 outputs pooler_output with extra dimensions: [batch, channels, 1, 1]
-    # We use squeeze() to turn it into a flat 2D vector: [batch, channels]
-    embedding = outputs.pooler_output.squeeze(-1).squeeze(-1)
-
-    return embedding
-
-def download_model(model = "openai/clip-vit-large-patch14"):
+def download_clip(force_download = False):
     '''downloads model to device (defaul to openai CLIP)
     
-    Args: model
+    Args: None
        
-    Returns: classifier
+    Returns: Pretrained moodel
     
     Raises: 
     '''
     if torch.cuda.is_available():
+         # use larger model if GPU is available
+        device = 0
         model = r"openai/clip-vit-large-patch14"
+        print("using GPU")
     else: 
+        # otherwise use CPU model
+        device = -1
         model = r"openai/clip-vit-base-patch32"
+        print("using CPU")
  
     # define model save path as downloads folder
     local_directory = rf"C:/Users/{os.getlogin()}/Downloads/{model}"
 
-    # check if model is already saved
-    if not os.path.exists(local_directory):
-        
-        # save model to directory
-        classifier = pipeline(task="zero-shot-image-classification", model= model)
-        classifier.save_pretrained(local_directory)
-        print(f"Model successfully saved to {local_directory}")
+    if os.path.exists(local_directory) and not force_download:
+        print(f"Loading existing model from: {local_directory}")
+        classifier = pipeline(
+            task="zero-shot-image-classification", 
+            model=str(local_directory),
+            device=device
+        )
+        return classifier
     
     # get user input if model already saved locally
     else:
@@ -155,21 +139,22 @@ def download_model(model = "openai/clip-vit-large-patch14"):
         
     return classifier
 
-def image_label_pred(image, label_list, classifier):
+def clip_predictor(image, label_list, model):
     '''assigns probablility of an image matching a label based on a classifier
     
     Args: 
     - image: image to be analyzed (PIL object)
     - label_list: labels to be tested for probability
-    - classifier: CLIP image classifier
+    - model: CLIP image classifier
        
     Returns:
-    - dataframe with 
+    - dataframe with prediction values for each list item
     
     Raises: 
     '''
 
-    predictions = classifier(image, candidate_labels=label_list)
+    # create predictions using classiier
+    predictions = model(image, candidate_labels=label_list)
     
     # take list of dictionaries, convert to df and transpose
     df = pd.DataFrame(predictions).T
@@ -181,8 +166,12 @@ def image_label_pred(image, label_list, classifier):
     return df[:-1]
 
 if __name__ == "__main__":
-
-    print('main')
+    a = "main"
+    # classifier = download_clip()
+    # vehicle_list = ["car", "bus", "motorcycle", "license plate"]
+    # image_folder = r"../data/formatted/license_plate_detection/train/images"
+    # image_set = load_images(directory= image_folder, img_obj= True)
+    # val = clip_predictor(image_set, vehicle_list, classifier)
 
 
 
