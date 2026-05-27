@@ -3,19 +3,24 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+[[source]]
+url = "https://download.pytorch.org/whl/cu130"
+verify_ssl = true
+name = "downloadpytorch"
+
 [packages]
 pandas = "*"
 scikit-learn = "*"
 pillow = "*"
 ipykernel = "*"
-torch = "*"
 matplotlib = "*"
 seaborn = "*"
 opencv-python = "*"
-torchvision = "*"
 requests = "*"
 transformers = "*"
 scikit-image = "*"
+torch = {version = "*", index = "downloadpytorch"}
+torchvision = {version = "*", index = "downloadpytorch"}
 
 [dev-packages]
 
