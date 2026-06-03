@@ -7,10 +7,8 @@ Code repository for the BDSC Computer Vision Pipeline project.
 
 ## Features
 
-
-## Tech Stack
-The following technologies are utilized in this project:
-  - [List of programs/packages]
+## Project Comments or Assumptions
+  **Weld Data Label Segmentation** - Original label data was represented as a polygon box centered around the area of classification.  Labels were changed to be bounding boxes using a center centroid translation of the data in YOLO format.
 
 ## Quick Start
 This project assumes you have the following software installed:
