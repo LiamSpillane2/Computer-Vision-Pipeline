@@ -23,6 +23,7 @@ torch = {version = "*", index = "downloadpytorch"}
 torchvision = {version = "*", index = "downloadpytorch"}
 onnxruntime = "*"
 optimum = {extras = ["onnxruntime"], version = "*"}
+libreyolo = "*"
 
 [dev-packages]
 
