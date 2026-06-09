@@ -352,7 +352,7 @@ def download_clip(force_download = False):
     # define model save path as downloads folder
     local_directory = rf"C:/Users/{os.getlogin()}/Downloads/{model}"
 
-    if os.path.exists(local_directory) and not force_download:
+    if os.path.exists(local_directory):
         print(f"Loading existing model from: {local_directory}")
         classifier = pipeline(
             task="zero-shot-image-classification", 
@@ -363,18 +363,9 @@ def download_clip(force_download = False):
     
     # get user input if model already saved locally
     else:
-        response = input("Clip model already downloaded, would you like to redownload? (Y/N) ")
-
-        # redownload based on user input
-        if response.upper() == "Y":
-            classifier.save_pretrained(local_directory)
-            classifier = pipeline(task="zero-shot-image-classification", model= model)
-            print(f"Model successfully saved to: {local_directory}")
-        
-        # otherwise return
-        else:
-            classifier = pipeline(task="zero-shot-image-classification",model=local_directory)
-            print(f"Model already saved to: {local_directory}")
+        classifier = pipeline(task="zero-shot-image-classification", model= model)
+        classifier.save_pretrained(local_directory)
+        print(f"Model successfully saved to: {local_directory}")
         
     return classifier
 
