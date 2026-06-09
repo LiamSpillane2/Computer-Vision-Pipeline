@@ -1,21 +1,22 @@
 """---Functions in this file---
-   
-    
-    dataset_info: provides the details of a dataframe for a cursory glance at its contents
-    sort_classes: counts the number of instances of each class within a dataset
-    data_distribution: returns the skew, kurtosis, and other distribution information
-    PCA_analysis: performs PCA analysis on a dataset
-    cluster_kmeans: performs a cluster analysis using kmeans
-    
-    plot_results: plot setup for basic plots
-    plot_kcluster: plots results from cluster analysis
-    plot_pca: plots results from pca analysis
-    
-    """
+
+
+dataset_info: provides the details of a dataframe for a cursory glance at its contents
+sort_classes: counts the number of instances of each class within a dataset
+data_distribution: returns the skew, kurtosis, and other distribution information
+PCA_analysis: performs PCA analysis on a dataset
+cluster_kmeans: performs a cluster analysis using kmeans
+
+plot_results: plot setup for basic plots
+plot_kcluster: plots results from cluster analysis
+plot_pca: plots results from pca analysis
+
+"""
 
 # import libraries
 import pandas as pd
 import os
+import math
 import random
 import seaborn as sns
 from PIL import Image
@@ -28,26 +29,29 @@ from sklearn.cluster import KMeans
 from pathlib import Path
 from collections import Counter
 from scipy import stats
-from transformers import AutoImageProcessor,  AutoModel, pipeline
+from transformers import AutoImageProcessor, AutoModel, pipeline
 import warnings
 import torch
-
+from optimum.onnxruntime import ORTModelForZeroShotImageClassification
+from transformers import AutoProcessor, pipeline
 
 """---Analysis Functions---
     Functions for use in exploratory data analysis.
     Image loading functions must be called first.
     """
 
+
 # function that runs several basic commands to describe the dataset for a cursory glance
 def dataset_info(df):
-    print(f"Dataset shape: {df.shape}\n") #shape of the dataset
-    df.head() #first five rows of the dataset
-    df.info() #column names, non-null count, and data types
-    df.describe() #basic statistics for each column
-    num_df = df.select_dtypes(include='number')
-    corr = num_df.corr(method = 'pearson')
+    print(f"Dataset shape: {df.shape}\n")  # shape of the dataset
+    df.head()  # first five rows of the dataset
+    df.info()  # column names, non-null count, and data types
+    df.describe()  # basic statistics for each column
+    num_df = df.select_dtypes(include="number")
+    corr = num_df.corr(method="pearson")
     sns.heatmap(corr)
     return corr
+
 
 # function to determine the number of instances of each class
 def sort_classes(folder_path):
@@ -66,46 +70,49 @@ def sort_classes(folder_path):
 
     return dict(sorted(counts.items()))
 
+
 # function that evaluates the distribution of the data
-def data_distribution (results):
+def data_distribution(results):
     fig, ax = plt.subplots(1, figsize=(9, 7))
-    ax.grid(linestyle='None')
-    plt.hist(results, bins = 50, range = [0,1])
+    ax.grid(linestyle="None")
+    plt.hist(results, bins=50, range=[0, 1])
     plt.show()
-    print ("Skewness = %.3f" %np.mean(stats.skew(results)))
-    print ("Kurtosis = %.3f" %np.mean(stats.kurtosis(results)))
-    print ("Shapiro test = %.3f, P-value = %.3f" %stats.shapiro(results))
+    print("Skewness = %.3f" % np.mean(stats.skew(results)))
+    print("Kurtosis = %.3f" % np.mean(stats.kurtosis(results)))
+    print("Shapiro test = %.3f, P-value = %.3f" % stats.shapiro(results))
+
 
 # run PCA analysis and plot
 def PCA_analysis(num_components, img_arrays, num_clusters):
-    
+
     # inputs
-        # num_components = number of components to be used in PCA analysis (int)
-        # img_dict = files to be used for analysis (dict)
-        # num_clusters = number of clusters to be used in kmeans clustering (int)
-    
+    # num_components = number of components to be used in PCA analysis (int)
+    # img_dict = files to be used for analysis (dict)
+    # num_clusters = number of clusters to be used in kmeans clustering (int)
+
     # separate dictionary into image names and histogram bin counts
-    #flattened_histograms = list(img_arrays)
+    # flattened_histograms = list(img_arrays)
     # create 2D array of all histogram lists in list
     histograms_matrix = np.array(img_arrays)
 
     # normalize histogram values
-    X_norm = normalize(histograms_matrix, norm='l1', axis=1)
+    X_norm = normalize(histograms_matrix, norm="l1", axis=1)
 
-    # PCA analysis 
+    # PCA analysis
     pca = PCA(num_components)
     X_pca = pca.fit_transform(X_norm)
 
-    #cluster_labels = cluster_kmeans(img_arrays, X_pca, num_clusters)
-    #plot_pca(cluster_labels, X_pca, pca)
-    #plt.show()
+    # cluster_labels = cluster_kmeans(img_arrays, X_pca, num_clusters)
+    # plot_pca(cluster_labels, X_pca, pca)
+    # plt.show()
     return X_pca
+
 
 # cluster using k means clustering
 def cluster_kmeans(img_arrays, X_pca, num_clusters):
     sorted_image_names = list(img_arrays.keys())
     # define K-Means model
-    kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init='auto')
+    kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init="auto")
 
     # run k-means on PCA array
     cluster_labels = kmeans.fit_predict(X_pca)
@@ -116,7 +123,7 @@ def cluster_kmeans(img_arrays, X_pca, num_clusters):
     # add images to dictionary based on their cluster label
     for img_name, label in zip(sorted_image_names, cluster_labels):
         cluster_groups[label].append(img_name)
-    
+
     return cluster_labels, cluster_groups
 
 
@@ -126,34 +133,37 @@ def cluster_kmeans(img_arrays, X_pca, num_clusters):
     Some analysis functions call plotting functions automatically. 
     """
 
+
 # General plotting function for a single chart
-def plot_results (result, plot_type, title, x_label, y_label):
-    
+def plot_results(result, plot_type, title, x_label, y_label):
+
     # inputs
-        #result = results from analysis you wanted to be plotted (df)
-        #plot_type = what plot you want to create (str)
-        #title = title of the plot (str)
-        #x_label = x-axis label (str)
-        #y_label = y-axis label (str)
+    # result = results from analysis you wanted to be plotted (df)
+    # plot_type = what plot you want to create (str)
+    # title = title of the plot (str)
+    # x_label = x-axis label (str)
+    # y_label = y-axis label (str)
 
     # define x and y values
     num_cols = result.shape[1]
-    x_vals = result.iloc[:,0]
-    y_vals = result[:,1]
+    x_vals = result.iloc[:, 0]
+    y_vals = result[:, 1]
 
-    #determine plot type and plot data
-    if plot_type == 'bar':
+    # determine plot type and plot data
+    if plot_type == "bar":
         plt.bar(x_vals, y_vals)
-    if plot_type == 'hist':
+    if plot_type == "hist":
         plt.hist(result)
-    if plot_type == 'pie':
+    if plot_type == "pie":
         result.iloc[num_cols].plot(kind="pie", autopct="%1.1f%%")
-    if plot_type == 'line':
+    if plot_type == "line":
         plt.plot(x_vals, y_vals)
     else:
-        print("Error: valid chart type not entered. Please enter the chart you want to use.")
+        print(
+            "Error: valid chart type not entered. Please enter the chart you want to use."
+        )
 
-    #plot details
+    # plot details
     plt.title(title)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
@@ -161,17 +171,20 @@ def plot_results (result, plot_type, title, x_label, y_label):
 
     return plt.show()
 
+
 # plot kmeans clustering analysis results
 def plot_kcluster(img_files, samples_per_cluster, num_clusters, cluster_groups):
     # define figure and axes: rows = num_clusters, cols = samples_per_cluster
-    fig, axes = plt.subplots(num_clusters, samples_per_cluster, figsize=(12, 3 * num_clusters))
+    fig, axes = plt.subplots(
+        num_clusters, samples_per_cluster, figsize=(12, 3 * num_clusters)
+    )
 
     # define overall figure title
-    fig.suptitle("Samples per Cluster Group", fontsize=16, fontweight='bold')
+    fig.suptitle("Samples per Cluster Group", fontsize=16, fontweight="bold")
 
     # loop through cluster groupings
     for cluster_id in range(num_clusters):
-        
+
         # get images in a cluster group
         images_in_cluster = cluster_groups[cluster_id]
 
@@ -180,18 +193,18 @@ def plot_kcluster(img_files, samples_per_cluster, num_clusters, cluster_groups):
 
         # pick random sample from each cluster group
         sampled_images = random.sample(images_in_cluster, num_to_sample)
-    
+
         # for each sample image in each cluster...
         for i in range(samples_per_cluster):
-        
+
             # define an axis
             ax = axes[cluster_id, i]
-        
+
             if i < len(sampled_images):
                 # define image path
                 img_name = sampled_images[i]
                 img_path = os.path.join(img_files, img_name)
-            
+
                 try:
                     # open image file
                     img = Image.open(img_path)
@@ -202,23 +215,48 @@ def plot_kcluster(img_files, samples_per_cluster, num_clusters, cluster_groups):
                     # set title
                     ax.set_title(f"{img_name}\n(Cluster {cluster_id})", fontsize=8)
                 except FileNotFoundError:
-                    ax.text(0.5, 0.5, "File\nNot Found", ha='center', va='center', color='red', fontsize=9)
+                    ax.text(
+                        0.5,
+                        0.5,
+                        "File\nNot Found",
+                        ha="center",
+                        va="center",
+                        color="red",
+                        fontsize=9,
+                    )
                 except Exception as e:
-                    ax.text(0.5, 0.5, "Error\nLoading", ha='center', va='center', color='orange', fontsize=9)
+                    ax.text(
+                        0.5,
+                        0.5,
+                        "Error\nLoading",
+                        ha="center",
+                        va="center",
+                        color="orange",
+                        fontsize=9,
+                    )
             else:
                 # Placeholder text if a cluster has fewer images than samples_per_cluster
-                ax.text(0.5, 0.5, "No More\nImages", ha='center', va='center', color='gray', fontsize=9)
-            
-            ax.axis('off')
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No More\nImages",
+                    ha="center",
+                    va="center",
+                    color="gray",
+                    fontsize=9,
+                )
+
+            ax.axis("off")
 
     plt.tight_layout()
     return plt.show()
+
 
 # plot PCA analysis results
 def plot_pca(cluster_labels, X_pca, pca):
     # Initialize a 3D figure
     fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
 
     # Scatter plot using the 3 PCA dimensions
     # 'cluster_labels' maps to your KMeans or clustering outputs
@@ -227,28 +265,33 @@ def plot_pca(cluster_labels, X_pca, pca):
         X_pca[:, 1],  # Principal Component 2
         X_pca[:, 2],  # Principal Component 3
         c=cluster_labels,  # Color points by cluster ID
-        cmap='tab10',      # cmap to use
-        s=50,              # Size of points
-        alpha=0.8          # Transparency to see overlapping points
+        cmap="tab10",  # cmap to use
+        s=50,  # Size of points
+        alpha=0.8,  # Transparency to see overlapping points
     )
 
     # Label the 3 dimensional axes
     # Labels include the percentage of dataset variance explained by each axis
-    ax.set_xlabel(f'PC 1 ({pca.explained_variance_ratio_[0]:.1%})')
-    ax.set_ylabel(f'PC 2 ({pca.explained_variance_ratio_[1]:.1%})')
-    ax.set_zlabel(f'PC 3 ({pca.explained_variance_ratio_[2]:.1%})')
+    ax.set_xlabel(f"PC 1 ({pca.explained_variance_ratio_[0]:.1%})")
+    ax.set_ylabel(f"PC 2 ({pca.explained_variance_ratio_[1]:.1%})")
+    ax.set_zlabel(f"PC 3 ({pca.explained_variance_ratio_[2]:.1%})")
 
     # Add decorative and analytical elements
-    plt.title('3D PCA Space of Image Histograms', fontsize=14, fontweight='bold')
-    fig.colorbar(scatter, ax=ax, label='Cluster Assignment', pad=0.1)
+    plt.title("3D PCA Space of Image Histograms", fontsize=14, fontweight="bold")
+    fig.colorbar(scatter, ax=ax, label="Cluster Assignment", pad=0.1)
 
     plt.tight_layout()
     return plt.show()
 
+
 """ ---Feature Extraction---"""
-def load_images(directory, num_img = 1, use_rand = True, seed = 42, gs = True, normalize = True, img_obj = False):
-    '''loads image file(s) from a directory, returns numpy array(s)
-    
+
+
+def load_images(
+    directory, num_img, use_rand=True, seed=42, gs=True, normalize=True, img_obj=False
+):
+    """loads image file(s) from a directory, returns numpy array(s)
+
     Args:
         -directory: directory with image files
 
@@ -273,18 +316,23 @@ def load_images(directory, num_img = 1, use_rand = True, seed = 42, gs = True, n
             - True: returns Pillow image object
 
     Returns: array(s) or pillow object(s) representing image(s)
-    
-    Raises: 
+
+    Raises:
         -WindowsError: if directory is not valid
-    
-    '''
+
+    """
     try:
 
         # valid extensions
-        extensions = ('.jpg', '.png')
+        extensions = (".jpg", ".png")
 
-        # list of files with valid extensions
-        valid_files = [f for f in os.listdir(directory) if f.endswith(extensions)]
+        if directory[-4:] in extensions:
+            directory = Path(directory)
+            valid_files = [directory.name]
+            directory = directory.parent
+        else:
+            # list of files with valid extensions
+            valid_files = [f for f in os.listdir(directory) if f.endswith(extensions)]
 
         # initialize image array list
         img_arrays = []
@@ -296,14 +344,13 @@ def load_images(directory, num_img = 1, use_rand = True, seed = 42, gs = True, n
                 test_file = os.path.join(directory, random.sample(valid_files, k=1)[0])
             else:
                 test_file = os.path.join(directory, valid_files[i])
-            
+
             # open file
-            
             img = Image.open(test_file)
 
             if img_obj == True:
                 img_arr = img
-            
+
             else:
                 # define array based on gs parameter
                 if gs:
@@ -313,87 +360,90 @@ def load_images(directory, num_img = 1, use_rand = True, seed = 42, gs = True, n
 
                 # normalize array based on normalize parameter
                 if normalize:
-                    img_arr = img_arr/255
-            
+                    img_arr = img_arr / 255
+
             # add array to array list
             img_arrays.append([img_arr, test_file])
 
         # return single array or array list based on num_img
-        if num_img == 1:
-            return img_arrays[0]
-        else:
-            return img_arrays
-
+        # if num_img == 1:
+        #     return img_arrays[0]
+        # else:
+        #     return img_arrays
+        return img_arrays
     except WindowsError as e:
         return "Directory Not Valid"
     except Exception as e:
         print(e)
 
-def download_clip(force_download = False):
-    '''downloads model to device (defaul to openai CLIP)
-    
+
+def download_clip(force_download=False):
+    """downloads model to device (defaul to openai CLIP)
+
     Args: None
-       
+
     Returns: Pretrained moodel
-    
-    Raises: 
-    '''
+
+    Raises:
+    """
     if torch.cuda.is_available():
-         # use larger model if GPU is available
+        # use larger model if GPU is available
         device = 0
         model = r"openai/clip-vit-large-patch14"
         print("using GPU")
-    else: 
+    else:
         # otherwise use CPU model
         device = -1
         model = r"openai/clip-vit-base-patch32"
         print("using CPU")
- 
+
     # define model save path as downloads folder
     local_directory = rf"C:/Users/{os.getlogin()}/Downloads/{model}"
 
     if os.path.exists(local_directory):
         print(f"Loading existing model from: {local_directory}")
         classifier = pipeline(
-            task="zero-shot-image-classification", 
+            task="zero-shot-image-classification",
             model=str(local_directory),
-            device=device
+            device=device,
         )
         return classifier
-    
+
     # get user input if model already saved locally
     else:
-        classifier = pipeline(task="zero-shot-image-classification", model= model)
+        classifier = pipeline(task="zero-shot-image-classification", model=model)
         classifier.save_pretrained(local_directory)
         print(f"Model successfully saved to: {local_directory}")
-        
+
     return classifier
 
+
 def clip_predictor(image, label_list, model):
-    '''assigns probablility of an image matching a label based on a classifier
-    
-    Args: 
+    """assigns probablility of an image matching a label based on a classifier
+
+    Args:
     - image: image to be analyzed (PIL object)
     - label_list: labels to be tested for probability
     - model: CLIP image classifier
-       
+
     Returns:
     - dataframe with prediction values for each list item
-    
-    Raises: 
-    '''
+
+    Raises:
+    """
 
     # create predictions using classiier
     predictions = model(image, candidate_labels=label_list)
-    
+
     # take list of dictionaries, convert to df and transpose
     df = pd.DataFrame(predictions).T
-    
+
     # column names are last row values
     df.columns = df.iloc[-1]
 
     # return all values except last row
     return df[:-1]
+
 
 if __name__ == "__main__":
     a = "main"
@@ -433,4 +483,90 @@ def search4id(metadata, search_text):
 
 
 
+# loading the OpenAI clip model (def model_id unless otherwise stated)
+def load_clip_pipeline(model_id="openai/clip-vit-base-patch32"):
 
+    model = ORTModelForZeroShotImageClassification.from_pretrained(
+        model_id, export=True
+    )
+    processor = AutoProcessor.from_pretrained(model_id)
+
+    # initialize the clip model
+    classifier = pipeline(
+        "zero-shot-image-classification",
+        model=model,
+        tokenizer=processor.tokenizer,
+        feature_extractor=processor.image_processor,
+        provider="CPUExecutionProvider",
+    )
+    return classifier
+
+
+# Run with load_clip_pipeline (run_classification is to seperate loading the model from the classification)
+def run_classification(
+    classifier,
+    image_folder="../data/license_plate_detection/train/images",
+    label_list=[],
+    num_img=100,
+    batch_size=8,
+):
+    # load images from image directory
+
+    image_set = load_images(
+        directory=image_folder, num_img=num_img, use_rand=True, img_obj=True
+    )
+
+    # get pillow image objects and file names from loaded images
+    pil_images = [img[0] for img in image_set]
+    file_names = [img[1] for img in image_set]
+
+    prob_list = []
+    results = classifier(pil_images, candidate_labels=label_list, batch_size=batch_size)
+
+    for idx, (predictions, file_name) in enumerate(zip(results, file_names)):
+        df = pd.DataFrame(predictions).T
+        df.columns = df.iloc[-1]
+        df = df[:-1]
+        df["fn"] = file_name
+        prob_list.append(df)
+
+    return pd.concat(prob_list, ignore_index=True)
+
+
+def prob_results(
+    result: pd.DataFrame,
+    json_path: str,
+    label: str = "license plate",
+    prob_thres: float = 0.5,
+    plot: bool = False,
+    max_cols: int = 3,
+):
+    result.to_json(json_path)
+    df = pd.read_json(json_path)
+    print(df)
+
+    if label not in df.columns:
+        raise KeyError(f"label: '{label}' not in label_list")
+
+    df_license_plate_only = df[df[label] > prob_thres].reset_index()
+
+    if plot:
+        n = len(df_license_plate_only)
+        cols = min(n, max_cols)
+        rows = math.ceil(n / cols)
+        squeeze=False
+        _, axes = plt.subplots(rows, cols, figsize=(12, rows * 3))
+        
+        if rows > 1:
+            axes_flat = axes.flatten()
+
+            for idx, row in df_license_plate_only.iterrows():
+                axes_flat[idx].imshow(Image.open(row["fn"]))
+                axes_flat[idx].set_title(f"Probability {row[label]:.2f}")
+            plt.show()
+        else:
+            axes.imshow(Image.open(df_license_plate_only.iloc[0]["fn"]))
+            axes.set_title(f"Probability {df_license_plate_only.iloc[0][label]:.2f}")
+            plt.show()
+
+    return df_license_plate_only
