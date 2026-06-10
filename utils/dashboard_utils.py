@@ -1,3 +1,18 @@
+import pandas as pd
+
+
+# fuction to combine zero-shot and ocr data into a dataframe.
+def add2metadata(zsc_data, ocr_output):
+
+    zsc_df = pd.DataFrame.from_dict(zsc_data)
+    ocr_df = pd.DataFrame.from_dict(ocr_output)
+    cols_to_add = ["text", "confidence", "bounding_box", "file_name"]
+    # access ocr elements from the end of the dataframe
+    model_df = zsc_df.join(ocr_df[cols_to_add])
+
+    return model_df
+
+
 # GUI search function, returns all columns for matching plate text
 def search4id(metadata, search_text):
     search_output_list = []

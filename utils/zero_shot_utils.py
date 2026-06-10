@@ -171,18 +171,6 @@ def clip_predictor(image, label_list, model):
     return df[:-1]
 
 
-# fuction to combine zero-shot and ocr data into a dataframe.
-def add2metadata(zsc_data, ocr_output):
-
-    zsc_df = pd.DataFrame.from_dict(zsc_data)
-    ocr_df = pd.DataFrame.from_dict(ocr_output)
-    cols_to_add = ["text", "confidence", "bounding_box", "file_name"]
-    # access ocr elements from the end of the dataframe
-    model_df = zsc_df.join(ocr_df[cols_to_add])
-
-    return model_df
-
-
 # loading the OpenAI clip model (def model_id unless otherwise stated)
 def load_clip_pipeline(model_id="openai/clip-vit-base-patch32"):
 
