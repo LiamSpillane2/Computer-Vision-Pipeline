@@ -173,7 +173,17 @@ def clip_predictor(image, label_list, model):
 
 # loading the OpenAI clip model (def model_id unless otherwise stated)
 def load_clip_pipeline(model_id="openai/clip-vit-base-patch32"):
+    """Load and intialize a CLIP zero-shot image classification pipeline
 
+    Args:
+      - model_id (str, optional): Hugging Face model identifier.
+      - Defaults to "openai/clip-vit-base-patch32".
+
+    Returns:
+        transformers.Pipeline: Configured zero-shot image classification pipline
+        that accepts images and condidate labels for inference.
+    """
+    
     model = ORTModelForZeroShotImageClassification.from_pretrained(
         model_id, export=True
     )
@@ -198,8 +208,24 @@ def run_classification(
     num_img=100,
     batch_size=8,
 ):
-    # load images from image directory
+    """Run zero-shot image classification on a collection of images.
 
+    Args:
+      - classifier: transformer.Pipeline
+            Initialized zero-shot image classification pipline.
+      - image_folder (str, optional): Directory containing images to classify.
+            Defaults to "../data/license_plate_detection/train/images".
+      - label_list (list, optional): Candidate labels to compare against each image. 
+            Defaults to [].
+      - num_img (int, optional): Number of images to load and classify. 
+            Defaults to 100.
+      - batch_size (int, optional): Numbers of images process simultaneously during inference. 
+            Defaults to 8.
+
+    Returns:
+      - pandas.DataFrame: DataFrame containing classification probabilities for each label
+            and the corresponding image filename.
+    """
     image_set = load_images(
         directory=image_folder, num_img=num_img, use_rand=True, img_obj=True
     )
@@ -229,9 +255,28 @@ def prob_results(
     plot: bool = False,
     max_cols: int = 3,
 ):
+    """Filter and optionally visualize classification results.
+
+    Args:
+      - result (pd.DataFrame): Classification results returned by run_classification()
+      - json_path (str): Path where results will be written as JSON
+      - label (str, optional): Label column used for filtering. Defaults to "license plate".
+      - prob_thres (float, optional): Minimum probability required for an image to be included
+            in the filtered results. Defaults to 0.5.
+      - plot (bool, optional): If True, displat matching images with their probabilities. 
+            Defaults to False.
+      - max_cols (int, optional): Maximum number of columns in the visualization grid. 
+            Defaults to 3.
+
+    Raises:
+      - KeyError: If the specified label is not present in the result DataFrame
+
+    Returns:
+      - pandas.DataFrame: Filtered DataFrame containing only images whose probability 
+            for the specified label exceeds the threshold.
+    """
     result.to_json(json_path)
     df = pd.read_json(json_path)
-    print(df)
 
     if label not in df.columns:
         raise KeyError(f"label: '{label}' not in label_list")
