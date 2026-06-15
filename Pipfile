@@ -23,6 +23,9 @@ torch = {version = "*", index = "downloadpytorch"}
 torchvision = {version = "*", index = "downloadpytorch"}
 fast-alpr = "*"
 tqdm = "*"
+onnxruntime = "*"
+optimum = {extras = ["onnxruntime"], version = "*"}
+libreyolo = "*"
 
 [dev-packages]
 
