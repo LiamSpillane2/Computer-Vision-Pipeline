@@ -30,10 +30,16 @@ df = df.dropna(subset = ["confidence"])
 def func(df_list):
     df_list = ast.literal_eval(df_list)
     df_list = [float(x) for x in df_list if not pd.isna(x)]
-    return sum(df_list)/len(df_list)
+    return round(sum(df_list)/len(df_list),5)
     
 
 df["avg_confidence"] = df["confidence"].apply(func)
+
+#sort by avg confidence
+df = df.sort_values(
+    by="avg_confidence",
+    ascending=False
+)
 
 SEARCH_COLUMNS = [
 
