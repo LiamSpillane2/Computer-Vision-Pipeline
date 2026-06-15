@@ -5,8 +5,10 @@ from fast_alpr import ALPR
 import pandas as pd
 from itertools import chain
 import ast
+import csv
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.widgets import Button
 
 def crop_img_yolo(img_path, annotation_line, pad=0):
     '''Crops image based on yolo annotation format
@@ -253,21 +255,167 @@ def annotate_images_ocr(img_dir, anno_dir, save_dir, csv_fp = None, df = None):
                 # define save path and save figure
                 save_path = file_path = os.path.join(save_dir, f"{file}_w_bbox.png")
                 plt.savefig(save_path)
- 
+
+def convert_yolo_to_bbox(yolo_box, img_w, img_h):
+    '''converts yolo annotation to bounding box coordinates
+    
+    Args:
+        -yolo_box: string of yolo coords 
+
+        -img_w: width of image
+
+        -img_h: height of image
+
+    Returns: 
+        - x_min, y_min, width, height   
+    '''
+
+
+    # format yolo string into list and assign to variables
+    coords = yolo_box.split(" ")
+    coords = [float(coord.strip()) for coord in coords]
+    _, x_center, y_center, w, h = coords
+    
+    # convert normalized height to absolute coords in images
+    width = w * img_w
+    height = h * img_h
+    xmin = (x_center * img_w) - (width / 2)
+    ymin = (y_center * img_h) - (height / 2)
+    
+    return xmin, ymin, width, height
+
+def review_image(image_path, yolo_box, text_label, output_csv, output_dir="reviewed_images"):
+    '''Takes image and bounding box and allows users to select Y/N for correct/incorrect labels
+    
+    Args:
+        -image_path: path to image 
+
+        -yolo_box: string with yolo coords
+
+        -text_label: result from OCR text extraciton
+
+        -output_csv: file_path to save results from review
+
+        -output_dir: folder to save images after review
+
+    Returns: 
+        - updated output_csv file and update folder with newly reviewed image   
+    '''
+
+    # make folder for output images if needed
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # open image and get info
+    img = cv2.imread(image_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_h, img_w, _ = img.shape
+
+    # if file does not exist, create first row with column headers
+    file_exists = os.path.isfile(output_csv)
+    with open(output_csv, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        if not file_exists:
+            writer.writerow(["Original_Image", "Review_Status", "Saved_Path"])
+
+    # get file name from path
+    filename = os.path.basename(image_path)
+
+    # read in csv file to dataframe
+    check_df = pd.read_csv(output_csv)
+
+    # if file is already in the csv file, return
+    review_list = check_df["Original_Image"].to_list()
+    if filename in review_list:
+        return
+    
+    # create and set up image for plotting
+    fig, ax_img = plt.subplots(figsize=(8, 4))
+    plt.subplots_adjust(bottom=0.18)
+    ax_img.imshow(img)
+    ax_img.axis('off')
+    
+    # convert yolo coordinates to bounding box
+    xmin, ymin, width, height = convert_yolo_to_bbox(yolo_box, img_w, img_h)
+    
+    # add rectangle to plot
+    rect = patches.Rectangle((xmin, ymin), width, height, linewidth=2, edgecolor='red', facecolor='none')
+    ax_img.add_patch(rect)
+    
+    # add text to plot
+    ax_img.text(xmin, ymin - 10, text_label, color='white', fontsize=10, weight='bold',
+                bbox=dict(facecolor='red', alpha=0.8, edgecolor='none', pad=3))
+    
+
+    # handle response function records to csv file
+    def handle_response(response):
+        filename = os.path.basename(image_path)
+        save_path = os.path.join(output_dir, f"{response}_{filename}")
+        
+
+        extent = ax_img.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        fig.savefig(save_path, bbox_inches=extent, pad_inches=0)
+        
+        file_exists = os.path.isfile(output_csv)
+        with open(output_csv, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            if not file_exists:
+                writer.writerow(["Original_Image", "Review_Status", "Saved_Path"])
+            writer.writerow([filename, response, save_path])
+            
+        print(f"Recorded '{response}' for {filename}. Saved to {save_path}")
+        
+        plt.close(fig)
+
+    # add Y/N buttons to plot
+    ax_yes = plt.axes([0.3, 0.04, 0.15, 0.06])
+    ax_no = plt.axes([0.55, 0.04, 0.15, 0.06])
+    
+    btn_yes = Button(ax_yes, 'Yes', color='lightgreen', hovercolor='green')
+    btn_no = Button(ax_no, 'No', color='tomato', hovercolor='red')
+    
+    btn_yes.on_clicked(lambda event: handle_response("Yes"))
+    btn_no.on_clicked(lambda event: handle_response("No"))
+    
+    button_references = [btn_yes, btn_no] 
+    
+    plt.show()
+
 if __name__ == "__main__":
 
-    alpr = ALPR()
-    
-    img_path = r".\data\license_plate_detection\train\images\lp_train_972.jpg"
-    image = cv2.imread(img_path)
-    alpr_dict = alpr_single_image(alpr,image,"lp_train_972")
-    
-    print(f"{alpr_dict} \n")
-    
-    train_img_dir = r"./data/license_plate_detection/train/images"
-    train_anno_dir = r"./data/license_plate_detection/train/labels"
+    # define image and annotation folders
+    image_folder = r".\data\license_plate_detection\train\images"
+    anno_folder = r".\data\license_plate_detection\train\labels"
 
-    
-    ocr_df = do_alpr(train_anno_dir,train_img_dir)
+    # relative path to OCR results
+    ocr_df = pd.read_csv(r".\data\alpr_ocr_results.csv")
 
-    print(ocr_df.head(5))
+    # folder to save reviewed images
+    review_img_folder = rf"C:\Users\{os.getlogin()}\Downloads"
+
+    # csv file path to save review results
+    output_csv_fp = r".\data\ocr_review_results.csv"
+
+    # get random sample of OCR results where text was extracted
+    ocr_df = ocr_df.dropna(subset=["text"])
+    rand_df = ocr_df.sample(n = 50)
+
+    # loop through random OCR images and review results
+    for idx, row in rand_df.iterrows():
+        img_fp= os.path.join(image_folder, f"{row['file_name']}.jpg")
+        anno_fp= os.path.join(anno_folder, f"{row['file_name']}.txt")
+
+        # open annotation and read lines
+        try:
+            with open(anno_fp, "r") as f:
+                lines = f.readlines()
+        except:
+            continue
+
+        # run through each line in annotation
+        for idx, line in enumerate(lines):
+            if idx > 0:
+                if not line.strip():
+                    continue
+                
+                # review image function
+                review_image(img_fp, line, row["text"],output_csv= output_csv_fp, output_dir=review_img_folder)
