@@ -18,6 +18,8 @@ from PyQt6.QtWidgets import (
 
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtTextToSpeech import QTextToSpeech
+from sympy import root
+from torch import layout
 from utils.dashboard_utils import search4id
 
 BACKGROUND_OPACITY = 0.80
@@ -142,28 +144,75 @@ class MainWindow(QMainWindow):
 
         bg = BackgroundWidget()
         self.setCentralWidget(bg)
-
+        # ---------------------------------
+        # Main Layout
+        # ---------------------------------
         root = QVBoxLayout(bg)
 
+        # Remove all margins so banner touches window edges
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        # ---------------------------------
+        # Full Width Banner
+        # ---------------------------------
+        self.banner_label = QLabel()
+        self.banner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.banner_label.setContentsMargins(0, 0, 0, 0)
+
+        self.banner_label.setStyleSheet("""
+            border:none;
+            margin:0px;
+            padding:0px;
+        """)
+
+        self.banner_pixmap = QPixmap(
+            "data/assets/knight banner.jpg"
+        )
+
+        self.banner_label.setFixedHeight(100)
+
+        # Initial display
+        self.banner_label.setPixmap(
+            self.banner_pixmap.scaled(
+                self.width(),
+                100,
+                Qt.AspectRatioMode.IgnoreAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+        )
+
+        # Add banner directly to root layout
+        root.addWidget(self.banner_label)
+
+        # ---------------------------------
+        # Main Glass Panel
+        # ---------------------------------
         glass = QWidget()
+
         glass.setStyleSheet("""
             background-color: rgba(0,0,0,20);
-            
             border-radius: 15px;
         """)
-#border: 2px solid red;
+
         root.addWidget(glass)
 
         layout = QVBoxLayout(glass)
 
-        title = QLabel("KNIGHT INDUSTRIES")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("color:#ff0000;font-size:42px;font-weight:bold;")
-        layout.addWidget(title)
+        # Optional: reduce spacing between banner and content
+        layout.setContentsMargins(10, 5, 10, 10)
 
+        # ---------------------------------
+        # Subtitle (keep or remove)
+        # ---------------------------------
         subtitle = QLabel("VEHICLE LOCATION SYSTEM")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setStyleSheet("color:cyan;font-size:18px;")
+
+        subtitle.setStyleSheet("""
+            color:cyan;
+            font-size:18px;
+        """)
+
         layout.addWidget(subtitle)
 
         layout.addWidget(KITTScanner())
@@ -369,12 +418,39 @@ class MainWindow(QMainWindow):
             # ----------------------------------
             # Load first matching image
             # ----------------------------------
+            import cv2
+            import ast
+
             first_img = os.path.join(
                 imagedir,
                 img_name[0] + ".jpg"
             )
 
-            self.viewer.load_image(first_img)
+            img = cv2.imread(first_img)
+
+            # Get first matching dataframe row
+            row_dict = dict(
+                zip(df.columns, results[0])
+            )
+
+            bbox = ast.literal_eval(row_dict["bbox"])
+
+            # Assuming format = [x1, x2, y1, y2]
+            x1, x2, y1, y2 = bbox
+
+            cv2.rectangle(
+                img,
+                (int(x1), int(y1)),
+                (int(x2), int(y2)),
+                (0, 255, 0),
+                3
+            )
+
+            temp_path = "_temp_bbox.jpg"
+            cv2.imwrite(temp_path, img)
+
+            self.viewer.load_image(temp_path)
+
 
             # ----------------------------------
             # Populate search results table
