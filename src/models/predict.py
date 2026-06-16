@@ -4,7 +4,7 @@ from ultralytics import YOLO
 def run_model(path, model=None, save=False, conf=0.25):
 
     if not model:
-        model = YOLO(r"..\..\models\Yolo26Model\weights\best.pt")
+        model = YOLO(r"..\models\Yolo26Model\weights\best.pt")
 
     xyxy = []
     cls_id = []
@@ -20,6 +20,7 @@ def run_model(path, model=None, save=False, conf=0.25):
             xyxy.append(box.xyxy[0].tolist())
             cls_id.append(int(box.cls[0]))
             confidence.append(float(box.conf[0]))
+
     return xyxy, cls_id, confidence
 
 

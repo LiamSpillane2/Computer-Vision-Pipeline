@@ -1,12 +1,13 @@
 import shutil
 import os
 
+
 def rename_and_copy_all(base_input_dir, base_output_dir, dataset):
-    
+
     ##Loops over test/train/valid subfolders and renames all images in each.
-    
+
     folders = ["test", "train", "valid"]
-    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
+    image_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
 
     for folder_name in folders:
         source_folder = os.path.join(base_input_dir, folder_name, "images")
@@ -15,10 +16,13 @@ def rename_and_copy_all(base_input_dir, base_output_dir, dataset):
             print(f"Skipping '{folder_name}' — folder not found.")
             continue
 
-        image_files = sorted([
-            f for f in os.listdir(source_folder)
-            if os.path.splitext(f)[1].lower() in image_extensions
-        ])
+        image_files = sorted(
+            [
+                f
+                for f in os.listdir(source_folder)
+                if os.path.splitext(f)[1].lower() in image_extensions
+            ]
+        )
 
         output_folder = os.path.join(base_output_dir, folder_name, "images")
         os.makedirs(output_folder, exist_ok=True)
@@ -33,14 +37,12 @@ def rename_and_copy_all(base_input_dir, base_output_dir, dataset):
             shutil.copy2(src, dst)
             print(f"[{folder_name}] {filename}  →  {new_name}")
 
-import shutil
-import os
 
 def rename_copy_and_add_headers_all(base_input_dir, base_output_dir, headers, dataset):
-    
+
     ##Loops over test/train/valid subfolders, reads from their 'labels' subfolder,
     ##copies and renames .txt files, and adds column headers to each file.
-    
+
     folders = ["test", "train", "valid"]
 
     for folder_name in folders:
@@ -50,10 +52,13 @@ def rename_copy_and_add_headers_all(base_input_dir, base_output_dir, headers, da
             print(f"Skipping '{folder_name}/labels' — folder not found.")
             continue
 
-        txt_files = sorted([
-            f for f in os.listdir(source_folder)
-            if os.path.splitext(f)[1].lower() == ".txt"
-        ])
+        txt_files = sorted(
+            [
+                f
+                for f in os.listdir(source_folder)
+                if os.path.splitext(f)[1].lower() == ".txt"
+            ]
+        )
 
         output_folder = os.path.join(base_output_dir, folder_name, "labels")
         os.makedirs(output_folder, exist_ok=True)
@@ -74,20 +79,19 @@ def rename_copy_and_add_headers_all(base_input_dir, base_output_dir, headers, da
 
             print(f"[{folder_name}] {filename}  →  {new_name}")
 
-import os
 
 def corners_to_yolo(row_values):
-    
-    #Converts 4-corner bounding box coordinates to YOLO format.
-    
-    #Expects row_values to be a list of strings:
-    #[class, x1, y1, x2, y2, x3, y3, x4, y4]
-    
-    #YOLO format requires normalized values (0-1), so img_width 
-    #and img_height of the corresponding image are needed.
-    
+
+    # Converts 4-corner bounding box coordinates to YOLO format.
+
+    # Expects row_values to be a list of strings:
+    # [class, x1, y1, x2, y2, x3, y3, x4, y4]
+
+    # YOLO format requires normalized values (0-1), so img_width
+    # and img_height of the corresponding image are needed.
+
     cls = row_values[0]
-    
+
     # Extract all x and y corner coordinates
     x_coords = [float(row_values[i]) for i in [1, 3, 5, 7]]
     y_coords = [float(row_values[i]) for i in [2, 4, 6, 8]]
@@ -99,10 +103,10 @@ def corners_to_yolo(row_values):
     y_max = max(y_coords)
 
     # YOLO center + dimensions, normalized to image size
-    x_center = ((x_min + x_max) / 2)
-    y_center = ((y_min + y_max) / 2)
-    width    = (x_max - x_min)
-    height   = (y_max - y_min)
+    x_center = (x_min + x_max) / 2
+    y_center = (y_min + y_max) / 2
+    width = x_max - x_min
+    height = y_max - y_min
 
     return f"{cls} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}"
 
@@ -111,7 +115,7 @@ def convert_labels_all(base_input_dir, base_output_dir, dataset):
     ##Loops over test/train/valid subfolders, reads from their 'labels' subfolder,
     ##converts corner-format bounding boxes to YOLO format, adds headers,
     ##and saves renamed files to the output directory.
-    
+
     folders = ["test", "train", "valid"]
     header = "class x_center y_center width height"
 
@@ -122,10 +126,13 @@ def convert_labels_all(base_input_dir, base_output_dir, dataset):
             print(f"Skipping '{folder_name}/labels' — folder not found.")
             continue
 
-        txt_files = sorted([
-            f for f in os.listdir(source_folder)
-            if os.path.splitext(f)[1].lower() == ".txt"
-        ])
+        txt_files = sorted(
+            [
+                f
+                for f in os.listdir(source_folder)
+                if os.path.splitext(f)[1].lower() == ".txt"
+            ]
+        )
 
         output_folder = os.path.join(base_output_dir, folder_name, "labels")
         os.makedirs(output_folder, exist_ok=True)
@@ -147,7 +154,9 @@ def convert_labels_all(base_input_dir, base_output_dir, dataset):
                     row_values = line.split()  # splits on any whitespace
 
                     if len(row_values) != 9:
-                        print(f"  WARNING: unexpected column count in {filename}, skipping row: {line}")
+                        print(
+                            f"  WARNING: unexpected column count in {filename}, skipping row: {line}"
+                        )
                         continue
 
                     yolo_row = corners_to_yolo(row_values)
