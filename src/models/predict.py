@@ -1,18 +1,18 @@
 from ultralytics import YOLO
-from pathlib import Path
 
 
-def run_model(path, save=False, conf=.25,):
+def run_model(path, model=None, save=False, conf=0.25):
 
-    model = YOLO(r"models\Yolo26Model\weights\best.pt")
-    
-    xyxy=[]
-    cls_id=[]
-    confidence=[]
+    if not model:
+        model = YOLO(r"..\models\Yolo26Model\weights\best.pt")
+
+    xyxy = []
+    cls_id = []
+    confidence = []
 
     results = model.predict(source=path, save=save, conf=conf)
 
-    # 3. Process the results programmatically 
+    # 3. Process the results programmatically
     for result in results:
         boxes = result.boxes  # Bounding boxes object
         for box in boxes:
@@ -20,9 +20,11 @@ def run_model(path, save=False, conf=.25,):
             xyxy.append(box.xyxy[0].tolist())
             cls_id.append(int(box.cls[0]))
             confidence.append(float(box.conf[0]))
+
     return xyxy, cls_id, confidence
 
 
-print(run_model(r"data\license_plate_detection\test\images\lp_test_001.jpg", save=True)) # place image path into run model
-
-
+if __name__ == "__main__":
+    run_model(
+        r"data\license_plate_detection\test\images\lp_test_001.jpg"
+    )  # place image path into run model

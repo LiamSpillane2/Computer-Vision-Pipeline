@@ -26,6 +26,7 @@ tqdm = "*"
 onnxruntime = "*"
 optimum = {extras = ["onnxruntime"], version = "*"}
 libreyolo = "*"
+ultralytics = "*"
 
 [dev-packages]
 
