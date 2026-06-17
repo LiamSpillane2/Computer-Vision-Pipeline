@@ -44,6 +44,8 @@ def single_image_pipeline(
     model,
     zs_results_path: str,
     zs_label_list: list,
+    do_zs: bool = False,
+    do_ocr: bool = False,
     save: bool = False,
     conf: float = 0.5,
     zs_label: str = None,
@@ -65,24 +67,26 @@ def single_image_pipeline(
     )
 
     # Zero-Shot Classification
-    results, p_results = do_zero_shot(
-        image_folder=image_path,
-        results_path=zs_results_path,
-        label_list=zs_label_list,
-        label=zs_label,
-        prob_thres=zs_prob_thres,
-    )
+    if do_zs:
+        results, p_results = do_zero_shot(
+            image_folder=image_path,
+            results_path=zs_results_path,
+            label_list=zs_label_list,
+            label=zs_label,
+            prob_thres=zs_prob_thres,
+        )
 
     # OCR Text Extraction
-    ocr_predictions = []
-    for cropped_image in cropped_images:
-        ocr_predictions.append(
-            alpr_single_image(
-                image=cropped_image,
-                file_name=image_path,
-                alpr=alpr_model,
+    if do_ocr:
+        ocr_predictions = []
+        for cropped_image in cropped_images:
+            ocr_predictions.append(
+                alpr_single_image(
+                    image=cropped_image,
+                    file_name=image_path,
+                    alpr=alpr_model,
+                )
             )
-        )
 
     print(
         "\n\n====================================== RESULTS ======================================"
@@ -93,15 +97,17 @@ def single_image_pipeline(
     print(f"Bounding boxes: {bounding_boxes}")
     print(f"Class IDs: {class_ids}")
     print(f"Confidences: {confidences}")
-    print(
-        "\n-------------------------------------- ZERO-SHOT ------------------------------------\n"
-    )
-    print(f"Zero-shot Results: {results}")
-    print(f"Zero-shot P Results: {p_results}")
-    print(
-        "\n----------------------------------------- OCR ---------------------------------------\n"
-    )
-    print(f"OCR Predictions: {ocr_predictions}")
+    if do_zs:
+        print(
+            "\n-------------------------------------- ZERO-SHOT ------------------------------------\n"
+        )
+        print(f"Zero-shot Results: {results}")
+        print(f"Zero-shot P Results: {p_results}")
+    if do_ocr:
+        print(
+            "\n----------------------------------------- OCR ---------------------------------------\n"
+        )
+        print(f"OCR Predictions: {ocr_predictions}")
 
 
 if __name__ == "__main__":
@@ -120,6 +126,8 @@ if __name__ == "__main__":
         zs_label_list=zs_label_list,
         zs_label="white",
         # kwargs
+        do_zs=True,
+        do_ocr=True,
         save=False,
         conf=0.5,
         alpr_model=None,  # will default to fast_alpr.ALPR()
