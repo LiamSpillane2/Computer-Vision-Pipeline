@@ -1,0 +1,8 @@
+path: C:\Users\bdsc_\Documents\Computer-Vision-Pipeline\data\weld_data
+
+train: ./train/images
+val: ./val/images
+test: ./test/images
+
+nc: 13
+names: ['Pore/Porosity', 'Inclusion', 'Undercut', 'Burn-through', 'Crack', 'Overlap', 'Reference Standard 1', 'Reference Standard 2', 'Reference Standard 3', 'Hidden Porosity', 'Shrinkage Depression', 'Lack of Fusion', 'Incomplete Root Penetration']
