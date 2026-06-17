@@ -63,7 +63,7 @@ def load_images(
         # initialize image array list
         img_arrays = []
 
-        for i in range(num_img):
+        for i in range(min(num_img, len(valid_files))):
 
             # define file paths based on random parameter
             if use_rand:
@@ -183,7 +183,7 @@ def load_clip_pipeline(model_id="openai/clip-vit-base-patch32"):
         transformers.Pipeline: Configured zero-shot image classification pipline
         that accepts images and condidate labels for inference.
     """
-    
+
     model = ORTModelForZeroShotImageClassification.from_pretrained(
         model_id, export=True
     )
@@ -215,11 +215,11 @@ def run_classification(
             Initialized zero-shot image classification pipline.
       - image_folder (str, optional): Directory containing images to classify.
             Defaults to "../data/license_plate_detection/train/images".
-      - label_list (list, optional): Candidate labels to compare against each image. 
+      - label_list (list, optional): Candidate labels to compare against each image.
             Defaults to [].
-      - num_img (int, optional): Number of images to load and classify. 
+      - num_img (int, optional): Number of images to load and classify.
             Defaults to 100.
-      - batch_size (int, optional): Numbers of images process simultaneously during inference. 
+      - batch_size (int, optional): Numbers of images process simultaneously during inference.
             Defaults to 8.
 
     Returns:
@@ -237,7 +237,7 @@ def run_classification(
     prob_list = []
     results = classifier(pil_images, candidate_labels=label_list, batch_size=batch_size)
 
-    for idx, (predictions, file_name) in enumerate(zip(results, file_names)):
+    for predictions, file_name in zip(results, file_names):
         df = pd.DataFrame(predictions).T
         df.columns = df.iloc[-1]
         df = df[:-1]
@@ -263,16 +263,16 @@ def prob_results(
       - label (str, optional): Label column used for filtering. Defaults to "license plate".
       - prob_thres (float, optional): Minimum probability required for an image to be included
             in the filtered results. Defaults to 0.5.
-      - plot (bool, optional): If True, displat matching images with their probabilities. 
+      - plot (bool, optional): If True, displat matching images with their probabilities.
             Defaults to False.
-      - max_cols (int, optional): Maximum number of columns in the visualization grid. 
+      - max_cols (int, optional): Maximum number of columns in the visualization grid.
             Defaults to 3.
 
     Raises:
       - KeyError: If the specified label is not present in the result DataFrame
 
     Returns:
-      - pandas.DataFrame: Filtered DataFrame containing only images whose probability 
+      - pandas.DataFrame: Filtered DataFrame containing only images whose probability
             for the specified label exceeds the threshold.
     """
     result.to_json(json_path)
@@ -282,12 +282,13 @@ def prob_results(
         raise KeyError(f"label: '{label}' not in label_list")
 
     df_license_plate_only = df[df[label] > prob_thres].reset_index()
+    if len(df_license_plate_only) == 0:
+        print("No matching images found")
 
     if plot:
         n = len(df_license_plate_only)
         cols = min(n, max_cols)
         rows = math.ceil(n / cols)
-        squeeze = False
         _, axes = plt.subplots(rows, cols, figsize=(12, rows * 3))
 
         if rows > 1:
