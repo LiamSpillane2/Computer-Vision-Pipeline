@@ -80,14 +80,14 @@ def alpr_single_image(alpr, image, file_name):
     output_list = []
     if len(results) == 0:
         result_dict = {
-            "bbox" : "NA",
-            "bbox_norm": "NA",
-            "confidence" : "NA",
-            "label" : "NA",
-            "text" : "NA",
-            "confidence" : "NA",
-            "region" : "NA" ,
-            "region_confidence" : "NA",
+            "ocr_bbox" : "NA",
+            "ocr_bbox_norm": "NA",
+            "ocr_confidence" : "NA",
+            "ocr_label" : "NA",
+            "ocr_text" : "NA",
+            "ocr_confidence" : "NA",
+            "ocr_region" : "NA" ,
+            "ocr_region_confidence" : "NA",
             "file_name": file_name
             }
         return [result_dict]
@@ -101,19 +101,19 @@ def alpr_single_image(alpr, image, file_name):
             x2_bounded = min(img_w, int(bbox.x2))
             y2_bounded = min(img_h, int(bbox.y2))
 
-            bbox_list = [x1_bounded,x2_bounded, y1_bounded, y2_bounded] 
+            bbox_list = [x1_bounded, y1_bounded, x2_bounded,y2_bounded] 
 
-            bbox_norm = [x1_bounded/img_w, x2_bounded/img_w, y1_bounded/img_h, y2_bounded/img_h]
+            bbox_norm = [x1_bounded/img_w, y1_bounded/img_h, x2_bounded/img_w, y2_bounded/img_h]
             
             result_dict = {
-            "bbox" : bbox_list,
-            "bbox_norm": bbox_norm,
-            "confidence" : result.detection.confidence,
-            "label" : result.detection.label,
-            "text" : result.ocr.text,
-            "confidence" : result.ocr.confidence,
-            "region" : result.ocr.region ,
-            "region_confidence" : result.ocr.region_confidence,
+            "ocr_bbox" : bbox_list,
+            "ocr_bbox_norm": bbox_norm,
+            "ocr_confidence" : result.detection.confidence,
+            "ocr_label" : result.detection.label,
+            "ocr_text" : result.ocr.text,
+            "ocr_confidence" : result.ocr.confidence,
+            "ocr_region" : result.ocr.region ,
+            "ocr_region_confidence" : result.ocr.region_confidence,
             "file_name": file_name
             }
             output_list.append(result_dict)
