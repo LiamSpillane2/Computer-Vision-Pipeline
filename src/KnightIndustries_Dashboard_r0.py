@@ -476,9 +476,7 @@ class UploadTab(QWidget):
         super().__init__()
 
         self.setStyleSheet("""
-            QWidget {
-                background-color: transparent;
-            }
+            
 
             QLabel {
                 background-color: transparent;
@@ -520,8 +518,15 @@ class UploadTab(QWidget):
         self.btn.clicked.connect(self.select_images)
 
     def select_images(self):
-        files, _ = QFileDialog.getOpenFileNames(self, "Select Images")
-        self.log.append(f"Loaded {len(files)} image(s)")
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select Images",
+            "",
+            "Images (*.png *.jpg *.jpeg *.bmp)"
+        )
+
+        if files:
+            self.log.append(f"Loaded {len(files)} image(s)")
 
 class SettingsTab(QWidget):
     def __init__(self, audio_output):
