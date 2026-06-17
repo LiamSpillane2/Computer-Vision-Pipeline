@@ -13,7 +13,9 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit,
     QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,
-    QScrollArea
+    QScrollArea, QTabWidget, QPushButton, QFileDialog,
+    QTextEdit, QProgressBar, QSlider, QCheckBox, QFormLayout, QSizePolicy
+
 )
 
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
@@ -71,11 +73,6 @@ class BackgroundWidget(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.fillRect(
-            self.rect(),
-            QColor(255, 0, 0, 25)
-            )
-
         if not self.bg.isNull():
             scaled = self.bg.scaled(
                 self.size(),
@@ -84,9 +81,9 @@ class BackgroundWidget(QWidget):
             )
             painter.setOpacity(BACKGROUND_OPACITY)
             painter.drawPixmap(0, 0, scaled)
-
         painter.setOpacity(1.0)
         painter.fillRect(self.rect(), QColor(0, 0, 0, 120))
+
 
 class KITTScanner(QWidget):
     def __init__(self):
@@ -94,32 +91,28 @@ class KITTScanner(QWidget):
         self.pos = 0
         self.direction = 1
         self.setMinimumHeight(45)
-
         self.timer = QTimer()
         self.timer.timeout.connect(self.animate)
         self.timer.start(15)
 
     def animate(self):
         self.pos += self.direction * 8
-
         if self.pos > self.width() - 120:
             self.direction = -1
-
         if self.pos < 0:
             self.direction = 1
-
         self.update()
 
     def paintEvent(self, event):
         p = QPainter(self)
-        p.fillRect(self.rect(), QColor(10,10,10))
-
+        p.fillRect(self.rect(), QColor(10, 10, 10))
         grad = QLinearGradient(self.pos, 0, self.pos + 120, 0)
         grad.setColorAt(0.0, QColor(255,0,0,0))
         grad.setColorAt(0.5, QColor(255,0,0,255))
         grad.setColorAt(1.0, QColor(255,0,0,0))
-
         p.fillRect(QRectF(self.pos, 8, 120, 25), grad)
+
+
 
 class ImageViewer(QGraphicsView):
     def __init__(self):
@@ -149,73 +142,27 @@ class ImageViewer(QGraphicsView):
         self.fitInView(self.scene.itemsBoundingRect(),
                        Qt.AspectRatioMode.KeepAspectRatio)
 
-class MainWindow(QMainWindow):
+class LicensePlateTab(QWidget):
     def __init__(self):
         super().__init__()
+        layout = QVBoxLayout(self)
 
         self.setWindowTitle("Knight Industries Intelligence Console")
         #self.resize(1800, 1000)
-
-        bg = BackgroundWidget()
-        self.setCentralWidget(bg)
-        # ---------------------------------
-        # Main Layout
-        # ---------------------------------
-        root = QVBoxLayout(bg)
-
-        # Remove all margins so banner touches window edges
-        root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(0)
-
-        # ---------------------------------
-        # Full Width Banner
-        # ---------------------------------
-        self.banner_label = QLabel()
-        self.banner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.banner_label.setContentsMargins(0, 0, 0, 0)
-
-        self.banner_label.setStyleSheet("""
-            border:none;
-            margin:0px;
-            padding:0px;
-        """)
-
-        self.banner_pixmap = QPixmap(
-            "data/assets/knight banner.jpg"
+        self.setAttribute(
+        Qt.WidgetAttribute.WA_TranslucentBackground
         )
 
-        self.banner_label.setFixedHeight(100)
-
-        # Initial display
-        self.banner_label.setPixmap(
-            self.banner_pixmap.scaled(
-                self.width(),
-                100,
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            )
-        )
-
-        # Add banner directly to root layout
-        root.addWidget(self.banner_label)
-
-        # ---------------------------------
-        # Main Glass Panel
-        # ---------------------------------
-        glass = QWidget()
-
-        glass.setStyleSheet("""
-            background-color: rgba(0,0,0,20);
-            border-radius: 15px;
+        self.setStyleSheet("""
+            background: transparent;
         """)
+        self.setObjectName("searchTab")
 
-        root.addWidget(glass)
-
-        layout = QVBoxLayout(glass)
-
-        # Optional: reduce spacing between banner and content
-        layout.setContentsMargins(10, 5, 10, 10)
-
+        self.setStyleSheet("""
+        #searchTab {
+            background: transparent;
+        }
+        """)
         # ---------------------------------
         # Subtitle (keep or remove)
         # ---------------------------------
@@ -244,30 +191,52 @@ class MainWindow(QMainWindow):
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
 
-        #left_panel.setStyleSheet("border:2px solid red")
-        #border: 2px solid red;
-        
+        # Make the whole panel transparent
+        left_panel.setStyleSheet("""
+            QWidget {
+                background-color: transparent;
+            }
+        """)
 
         self.viewer = ImageViewer()
         self.viewer.setMinimumSize(600, 300)
+
+        # Keep border but remove background
+        self.viewer.setStyleSheet("""
+            background-color: transparent;
+            border: 2px solid red;
+        """)
+
         left_layout.addWidget(self.viewer)
-        #this adds border to the image viewer 
-        self.viewer.setStyleSheet("border:2px solid red")
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-       
+
+        # IMPORTANT: remove scroll background
+        scroll.setStyleSheet("""
+            QScrollArea {
+                background-color: transparent;
+                border: none;
+            }
+            QScrollArea > QWidget > QWidget {
+                background-color: transparent;
+            }
+            QScrollArea viewport {
+                background-color: transparent;
+            }
+        """)
 
         self.thumb_widget = QWidget()
+
+        self.thumb_widget.setStyleSheet("""
+            background-color: transparent;
+            border: 2px solid red;
+        """)
+
         self.thumb_layout = QHBoxLayout(self.thumb_widget)
-        #this adds a border around the thumbnails pics
-        self.thumb_widget.setStyleSheet("border:2px solid red")
 
         scroll.setWidget(self.thumb_widget)
         left_layout.addWidget(scroll)
-        #will this add the single border on the thumbnail
-        #this gives a double red border 
-        #scroll.setStyleSheet("border:2px solid red")
 
         # RIGHT PANEL
         right_panel = QWidget()
@@ -314,33 +283,6 @@ class MainWindow(QMainWindow):
                 padding:4px;
             }
         """)
-
-        # ---------------------------------
-        # Background Music
-        # ---------------------------------
-        self.audio_output = QAudioOutput()
-        self.music_player = QMediaPlayer()
-        self.music_player.setAudioOutput(self.audio_output)
-
-        music_file = os.path.abspath("data/assets/Knight_Rider.wav")
-        self.music_player.setSource(QUrl.fromLocalFile(music_file))
-
-        self.audio_output.setVolume(0.15)
-
-        # ✅ Proper Qt6 looping (NO helper function needed)
-        self.music_player.setLoops(QMediaPlayer.Loops.Infinite)
-
-        self.music_player.play()
-
-
-
-
-#KITT voice 
-        self.tts = QTextToSpeech()
-        self.tts.say(
-        "Knight Industries Vehicle Location System. Online."
-        )   
-
 
         self.update_dashboard()
 
@@ -528,6 +470,178 @@ class MainWindow(QMainWindow):
                             str(value)
                         )
                     )
+
+class UploadTab(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.setStyleSheet("""
+            QWidget {
+                background-color: transparent;
+            }
+
+            QLabel {
+                background-color: transparent;
+                color: white;
+            }
+
+            QTextEdit {
+                background-color: transparent;
+                border: 1px solid gray;
+                color: white;
+            }
+
+            QProgressBar {
+                background-color: transparent;
+                border: 1px solid gray;
+                color: white;
+            }
+
+            QProgressBar::chunk {
+                background-color: #3daee9;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+
+        layout.addWidget(QLabel("IMAGE UPLOAD SYSTEM"))
+
+        self.btn = QPushButton("SELECT IMAGES")
+
+        self.progress = QProgressBar()
+
+        self.log = QTextEdit()
+        self.log.setStyleSheet("background-color: transparent;")
+
+        layout.addWidget(self.btn)
+        layout.addWidget(self.progress)
+        layout.addWidget(self.log)
+
+        self.btn.clicked.connect(self.select_images)
+
+    def select_images(self):
+        files, _ = QFileDialog.getOpenFileNames(self, "Select Images")
+        self.log.append(f"Loaded {len(files)} image(s)")
+
+class SettingsTab(QWidget):
+    def __init__(self, audio_output):
+        super().__init__()
+        self.audio_output = audio_output
+        layout = QFormLayout(self)
+        self.volume = QSlider(Qt.Orientation.Horizontal)
+        self.volume.setRange(0, 100)
+        self.volume.setValue(15)
+        self.volume.valueChanged.connect(
+            lambda v: self.audio_output.setVolume(v/100)
+        )
+        layout.addRow("Music Volume", self.volume)
+        layout.addRow(QCheckBox("Enable Startup Voice"))
+        layout.addRow(QCheckBox("Launch Full Screen"))
+
+class Banner(QLabel):
+    def __init__(self, pixmap):
+        super().__init__()
+        self.pixmap_orig = pixmap
+        self.setFixedHeight(100)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def resizeEvent(self, event):
+        scaled = self.pixmap_orig.scaled(
+            self.width(),
+            self.height(),
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            Qt.TransformationMode.SmoothTransformation
+        )
+        self.setPixmap(scaled)
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        bg = BackgroundWidget()
+        self.setCentralWidget(bg)
+
+        root = QVBoxLayout(bg)
+        root.setContentsMargins(0,0,0,0)
+
+        banner = QLabel()
+        pix = QPixmap("data/assets/knight banner.jpg")
+
+        banner.setFixedHeight(100)
+        banner.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        # IMPORTANT: do NOT stretch image
+        banner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Scale image down (not up)
+        scaled_pix = pix.scaled(
+            800, 150,  # <-- control image size here
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+
+        banner.setPixmap(scaled_pix)
+        root.addWidget(banner)
+
+        glass = QWidget()
+        root.addWidget(glass)
+
+        layout = QVBoxLayout(glass)
+
+
+         # ---------------------------------
+        # Background Music
+        # Orginial audio player 
+        # ---------------------------------
+        self.audio_output = QAudioOutput()
+        self.music_player = QMediaPlayer()
+        self.music_player.setAudioOutput(self.audio_output)
+
+        music_file = os.path.abspath("data/assets/Knight_Rider.wav")
+        self.music_player.setSource(QUrl.fromLocalFile(music_file))
+
+        self.audio_output.setVolume(0.15)
+
+        # ✅ Proper Qt6 looping (NO helper function needed)
+        self.music_player.setLoops(QMediaPlayer.Loops.Infinite)
+
+        self.music_player.play()
+        #-----------------------------------
+
+
+        self.tabs = QTabWidget()
+        self.tabs.setTabPosition(QTabWidget.TabPosition.South)
+
+        self.tabs.addTab(LicensePlateTab(), "SEARCH")
+        self.tabs.addTab(UploadTab(), "UPLOAD")
+        self.tabs.addTab(SettingsTab(self.audio_output), "SETTINGS")
+
+        layout.addWidget(self.tabs)
+
+        self.setStyleSheet("""
+        QLabel{color:cyan;}
+        QTabWidget::pane{
+            border:2px solid red;
+            background:rgba(0,0,0,120);
+        }
+        QTabBar::tab{
+            background:black;
+            color:cyan;
+            border:2px solid red;
+            min-width:180px;
+            min-height:35px;
+        }
+        QTabBar::tab:selected{
+            background:rgb(60,0,0);
+            color:red;
+        }
+        """)
+
+# #KITT voice orginial code  
+
+        self.tts = QTextToSpeech()
+        self.tts.say("Knight Industries Vehicle Location System. Online.")
+
 
     def keyPressEvent(self, event):
 
