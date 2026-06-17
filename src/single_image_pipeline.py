@@ -106,7 +106,7 @@ def single_image_pipeline(
 
 if __name__ == "__main__":
     image_path = r"data\license_plate_detection\test\images\lp_test_002.jpg"
-    zs_results_path = r"src\demo\zero_shot.txt"
+    zs_results_path = r"src\demo\zero_shot.json"
     zs_label_list = [
         "white",
         "red",
