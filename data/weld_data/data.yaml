@@ -1,7 +1,7 @@
 path: C:\Users\bdsc_\Documents\Computer-Vision-Pipeline\data\weld_data
 
 train: ./train/images
-val: ./val/images
+val: ./valid/images
 test: ./test/images
 
 nc: 13

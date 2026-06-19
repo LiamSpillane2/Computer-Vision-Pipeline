@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LICENSE_DATASET_ROOT = f'{ROOT}\data\license_plate_detection'
 WELD_DATASET_ROOT = f'{ROOT}\data\weld_data'
 
-SPLIT = ['train', 'val', 'test']
+SPLIT = ['train', 'valid', 'test']
 
 # =========================
 # SAFETY UTILITIES
