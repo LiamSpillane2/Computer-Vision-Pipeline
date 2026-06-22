@@ -51,7 +51,15 @@ def single_image_pipeline(
                     alpr=alpr_model,
                 )
             )
-
+    result = {
+        "bounding_boxes": bounding_boxes,
+        "class_ids": class_ids,
+        "confidences": confidences,
+        "zs_results": results if do_zs else None,
+        "zs_p_results": p_results if do_zs else None,
+        "ocr_predictions":ocr_predictions if do_ocr else None 
+    }
+    
     print(
         "\n\n====================================== RESULTS ======================================"
     )
@@ -72,7 +80,7 @@ def single_image_pipeline(
             "\n----------------------------------------- OCR ---------------------------------------\n"
         )
         print(f"OCR Predictions: {ocr_predictions}")
-
+    return result
 
 if __name__ == "__main__":
     image_path = r"data\license_plate_detection\test\images\lp_test_002.jpg"
