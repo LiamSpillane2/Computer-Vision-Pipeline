@@ -88,11 +88,12 @@ if __name__ == "__main__":
         model=None,  # will default to models/Yolo26Model/weights/best.pt
         zs_results_path=zs_results_path,
         zs_label_list=zs_label_list,
-        zs_label="white",
         # kwargs
         do_zs=True,
         do_ocr=True,
         save=False,
         conf=0.5,
+        zs_label="white",
+        zs_prob_thres=0.6,
         alpr_model=None,  # will default to fast_alpr.ALPR()
     )

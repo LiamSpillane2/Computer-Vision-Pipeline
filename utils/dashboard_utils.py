@@ -1,5 +1,6 @@
 import pandas as pd
-
+from pathlib import Path
+from ast import literal_eval
 
 # fuction to combine zero-shot and ocr data into a dataframe.
 def add2metadata(zsc_data, ocr_output):
@@ -39,7 +40,94 @@ def search4id(metadata, search_text):
         filtered_df["avg_confidence"].tolist()
     )
 
+# Reads output of OCR data and returns dictionary for GUI
+def get_metadata(route = 'csv'):
+    # Read in OCR results file
+    if route == 'csv':
+        print("Reading CSV File")
+        df = pd.read_csv(Path(f"{Path.cwd().parent}/data/cvp_model_results.csv"))
+    else:
+        print("Reading database")
+        df = pd.read_sql(Path(f"{Path.cwd().parent}/data/cvp_model_results.db"))
+    # Cleans up the dataframe columns for processing
+    df["ocr_confidence"] = df["ocr_confidence"].apply(lambda x: literal_eval(x) if pd.notna(x) else [])
+    df["ocr_text_list"] = df["ocr_text"].apply(lambda x: list(x) if isinstance(x, str) else [])
 
+    # This uses the literal_eval function to convert the columns from strings to lists or dictionaries
+    columns_to_convert = ["vehicle", "no vehicle", "car", "bus", "truck", "motorcycle", "only license plate"]
+    for col in columns_to_convert:
+        df[col] = df[col].apply(literal_eval)
+
+    #This will loop through the rows 
+    records = []
+    for index, row in df.iterrows():
+        #Cleaning up scores for each type of vehicle
+        confidence = row["ocr_confidence"]
+        text = row["ocr_text_list"]
+
+        if confidence and text:
+            trimmed_confidence = confidence[:len(confidence)]
+            min_char, min_confidence = min(zip(text,trimmed_confidence), key=lambda x: x[1])
+        else:
+            min_char, min_confidence = None,0
+
+        letters = pd.Series(row["ocr_text_list"])
+        confs = pd.Series(trimmed_confidence)
+        letter_confidence = pd.concat([letters, confs], axis=1)
+
+        # This creates a record to process some of the data, later to be transformed into a dataframe
+        record = {
+            "file_name" : row["file_name"],
+            "avg_confidence" : sum(row["ocr_confidence"])/len(row["ocr_confidence"]) if row["ocr_confidence"] else 0,
+            "min confidence" : min_confidence,
+            "min confidence char" : min_char,
+            "vehicle score" : row["vehicle"]["score"],
+            "no vehicle score" : row["no vehicle"]["score"],
+            "car score" : row["car"]["score"],
+            "bus score" : row["bus"]["score"],
+            "truck score" : row["truck"]["score"],
+            "motorcycle score" : row["motorcycle"]["score"],
+            "license plate only score" : row["only license plate"]["score"],
+            "letter confidence": letter_confidence
+        }
+        records.append(record)
+    
+    # This creates the final dataframe to process
+    columns_to_drop = ["vehicle", "no vehicle", "car", "bus", "truck", "motorcycle", "only license plate", "yolo_class_id", "ocr_bbox", "ocr_text_list"]
+    df2 = pd.DataFrame(records)
+    df = df.drop(columns=columns_to_drop)
+    df_final = pd.merge(df, df2, on='file_name')
+
+    #This line calculates the average confidence for each region
+    region_avg_confidence = df_final.groupby('ocr_region')['ocr_region_confidence'].mean().sort_values(ascending=False)
+
+    #This line counts the number of times each character appears in the dataset
+    region_counts = df_final["ocr_region"].value_counts()
+
+    #This block of code creates a list of all of the characters that appear and their confidences, then creates an avg for each char
+    all_letters = pd.concat(df_final["letter confidence"].tolist(), ignore_index=True)
+    all_letters.columns = ["char", "confidence"]
+    all_letters = all_letters.dropna(subset=["char"])
+    avg_char_conf = (
+        all_letters
+        .groupby("char")["confidence"]
+        .mean()
+        .sort_index()
+    )
+
+    #This block of code creates the dictionaries to return to the GUI
+    overall_metadata = {
+        "region stats": pd.concat([region_counts, region_avg_confidence], axis = 1),
+        "char counts" : pd.concat([avg_char_conf, df_final["min confidence char"].value_counts()], axis=1)
+    }
+    meta_dict = {
+        "Record Metadata": df_final,
+        "Overall Metadata": overall_metadata,
+        "Raw Data": df
+    }
+
+    print("Complete")
+    return meta_dict
 
     #Jacks Code 
     # search_output_list = []
