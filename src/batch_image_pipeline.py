@@ -12,11 +12,7 @@ from utils.cvp_batch_utils import run_batch_cvp
 
 if __name__ == "__main__":
     # folder paths
-    image_folder = r".\data\license_plate_detection\train\images"
-    output_path = r".\data\cvp_model_results.csv"
-
-    # file list
-    file_list = [f for f in os.listdir(image_folder) if f.lower().endswith(".jpg")]
+    image_folder = r".\data\license_plate_detection\test\images"
 
     # labels
     labels = [
@@ -30,4 +26,4 @@ if __name__ == "__main__":
     ]
 
     # function to run batches
-    run_batch_cvp(file_list, labels, output_path, image_folder)
+    run_batch_cvp(labels, image_folder)
