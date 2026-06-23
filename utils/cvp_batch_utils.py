@@ -6,6 +6,8 @@ from fast_alpr import ALPR
 from ultralytics import YOLO
 from PIL import Image
 import tqdm
+from sqlalchemy import create_engine
+import json
 
 # Get the path of the parent directory
 parent_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
@@ -16,6 +18,15 @@ if parent_dir not in sys.path:
 
 from utils.ocr_utils import alpr_single_image
 from utils.zero_shot_utils import download_clip
+
+def format_df_for_sql(df):
+    '''formats list and dict typs to json prior to saving to SQL database'''
+
+    # loop through df columns and apply json.dumps if list or dict
+    for col in df.columns:
+        df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (list,dict)) else x)
+    
+    return df
 
 
 def run_model_batch(paths, model, conf=0.25):
@@ -79,7 +90,19 @@ def clip_batch(pil_images, label_list, clip_model, batch_size=16):
     return dfs
 
 
-def run_batch_cvp(file_list, labels, output_path, image_folder, batch_size=16):
+def run_batch_cvp(
+        labels: list, 
+        image_folder: str, 
+        batch_size: int = 8, 
+        output_path: str = None,
+        do_zs: bool = True,
+        do_ocr: bool = True,
+        yolo_conf: float = 0.5,
+        yolo_model_weights:str = None,
+        alpr_model_initialized = None,
+        clip_model_initialized = None
+        ):
+    
     """Runs files through CVP. Performs bounding box
     prediction, zero shot classification and ocr text extraction
 
@@ -93,12 +116,28 @@ def run_batch_cvp(file_list, labels, output_path, image_folder, batch_size=16):
     Returns:
         -csv file with license plate bounding boxes, extracted text and zero shot probabilities
     """
-    # initialize models
-    yolo_model = YOLO(r"..\models\Yolo26Model\weights\best.pt")
-    alpr_model = ALPR()
-    clip_model = download_clip()
+
+    # initialize YOLO
+    if yolo_model_weights is None:
+        yolo_model = YOLO(r"..\models\Yolo26Model\weights\best.pt")
+    else:
+        yolo_model = YOLO(yolo_model_weights)
+
+    # initialize ALPR
+    if alpr_model_initialized is None:
+        alpr_model = ALPR()
+    else:
+        alpr_model = alpr_model_initialized
+    
+    # initialize CLIP
+    if clip_model_initialized is None:
+        clip_model = download_clip()
+    else:
+        clip_model = clip_model_initialized
 
     master_list = []
+
+    file_list = [f for f in os.listdir(image_folder) if f.lower().endswith(".jpg")]
 
     # define batches based on batch size
     batches = [
@@ -106,7 +145,7 @@ def run_batch_cvp(file_list, labels, output_path, image_folder, batch_size=16):
     ]
 
     # loop through batches
-    for idx, batch in enumerate(tqdm.tqdm(batches, desc="running batches...")):
+    for batch in tqdm.tqdm(batches, desc="running batches..."):
 
         # define path and file names
         paths = [os.path.join(image_folder, f) for f in batch]
@@ -121,16 +160,21 @@ def run_batch_cvp(file_list, labels, output_path, image_folder, batch_size=16):
         ]
 
         # yolo predictions for batch of images
-        yolo_out = run_model_batch(paths, model=yolo_model)
+        yolo_out = run_model_batch(paths, model=yolo_model, conf = yolo_conf)
 
         # clip predictions for batch of images
-        clip_dfs = clip_batch(pil_images, labels, clip_model, batch_size)
+        if do_zs:
+            clip_dfs = clip_batch(pil_images, labels, clip_model, batch_size)
+        else:
+            clip_dfs = pd.DataFrame([])
 
-        # loop through batch of images and append ocr results to list
-        alpr_results = []
+        
         for i, img, name in zip(range(0, batch_size), bgr_images, names):
+            if do_ocr:
+                predict_dict = alpr_single_image(img, name, alpr_model)
+            else:
+                predict_dict = {}
 
-            predict_dict = alpr_single_image(img, name, alpr_model)
             xyxy, cls_id, conf = yolo_out[i]
             clip_df = clip_dfs[i]
 
@@ -149,14 +193,41 @@ def run_batch_cvp(file_list, labels, output_path, image_folder, batch_size=16):
                     **df_row_dict,
                 }
             )
+        
+    # if no output path specified, save to sqlite database
+    if output_path == None:
 
-    pd.DataFrame(master_list).to_csv(output_path, index=False)
-    print(f"Saved {len(master_list)} rows to {output_path}")
+        conn_str = r'sqlite:///./data/cvp_database.db'
+        master_df = pd.DataFrame(master_list)
+        
+        master_df = format_df_for_sql(master_df)
+
+        engine = create_engine(conn_str)
+        with engine.connect() as conn:
+            master_df.to_sql(name = "cvp_results", con = conn, if_exists= "append")
+        
+        print(f"Saved {len(master_list)} rows to {conn_str}")
+    
+    # save as csv file if extension if .csv
+    else:
+        # get file extension from output path
+        full_file_name = os.path.basename(output_path)
+        file_name, file_extension = os.path.splitext(full_file_name)
+        
+        # if the file extension is .csv
+        if file_extension == ".csv":
+            pd.DataFrame(master_list).to_csv(output_path, index=False)
+            print(f"Saved {len(master_list)} rows to {output_path}")
+
+        # otherwise format the save path to save to a .csv
+        else:
+            output_path = os.path.join(os.path.dirname(output_path), f"{file_name}.csv")
+            pd.DataFrame(master_list).to_csv(output_path, index=False)
 
 
 if __name__ == "__main__":
     # folder paths
-    image_folder = r".\data\license_plate_detection\train\images"
+    image_folder = r".\data\license_plate_detection\test\images"
     output_path = r".\data\cvp_model_results.csv"
 
     # file list
@@ -174,4 +245,4 @@ if __name__ == "__main__":
     ]
 
     # function to run batches
-    run_batch_cvp(file_list, labels, output_path, image_folder)
+    run_batch_cvp(labels, image_folder)
