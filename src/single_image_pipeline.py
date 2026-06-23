@@ -1,6 +1,28 @@
+import numpy as np
+import pandas as pd
+
 from src.models.predict import run_model
 from utils.ocr_utils import alpr_single_image
 from utils.pipeline_utils import do_zero_shot, crop_image
+
+
+def _convert_numpy(obj):
+    """Recursively convert numpy/pandas types to native Python types."""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, pd.DataFrame):
+        return obj.to_dict(orient="records")
+    elif isinstance(obj, pd.Series):
+        return obj.tolist()
+    elif isinstance(obj, list):
+        return [_convert_numpy(i) for i in obj]
+    elif isinstance(obj, dict):
+        return {k: _convert_numpy(v) for k, v in obj.items()}
+    return obj
 
 
 def single_image_pipeline(
@@ -31,6 +53,7 @@ def single_image_pipeline(
     )
 
     # Zero-Shot Classification
+    results, p_results = None, None
     if do_zs:
         results, p_results = do_zero_shot(
             image_folder=image_path,
@@ -41,6 +64,7 @@ def single_image_pipeline(
         )
 
     # OCR Text Extraction
+    ocr_predictions = None
     if do_ocr:
         ocr_predictions = []
         for cropped_image in cropped_images:
@@ -52,26 +76,16 @@ def single_image_pipeline(
                 )
             )
 
-    print(
-        "\n\n====================================== RESULTS ======================================"
-    )
-    print(
-        "\n---------------------------------- OBJECT DETECTION ---------------------------------\n"
-    )
-    print(f"Bounding boxes: {bounding_boxes}")
-    print(f"Class IDs: {class_ids}")
-    print(f"Confidences: {confidences}")
-    if do_zs:
-        print(
-            "\n-------------------------------------- ZERO-SHOT ------------------------------------\n"
-        )
-        print(f"Zero-shot Results: {results}")
-        print(f"Zero-shot P Results: {p_results}")
-    if do_ocr:
-        print(
-            "\n----------------------------------------- OCR ---------------------------------------\n"
-        )
-        print(f"OCR Predictions: {ocr_predictions}")
+    result = _convert_numpy({
+        "bounding_boxes": bounding_boxes,
+        "class_ids": class_ids,
+        "confidences": confidences,
+        "zs_results": results,
+        "zs_p_results": p_results,
+        "ocr_predictions": ocr_predictions,
+    })
+
+    return result
 
 
 if __name__ == "__main__":
