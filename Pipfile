@@ -27,6 +27,7 @@ onnxruntime = "*"
 optimum = {extras = ["onnxruntime"], version = "*"}
 libreyolo = "*"
 ultralytics = "*"
+pyqt6 = "*"
 
 [dev-packages]
 
