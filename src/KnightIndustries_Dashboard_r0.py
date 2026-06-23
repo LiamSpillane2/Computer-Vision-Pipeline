@@ -1,13 +1,19 @@
 #Kinight Industries Dashboard License plate recognition and search system
 #r0 
 
+from importlib.resources import files
+from pathlib import Path
 import sys, os
+from unittest import result
+from urllib import response
+from xmlrpc import client
 import pandas as pd
 import numpy as np
 import cv2
 import ast
+import requests
 
-from PyQt6.QtCore import Qt, QTimer, QRectF, QUrl
+from PyQt6.QtCore import Qt, QObject, QTimer, QRectF, QUrl, pyqtSignal
 from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor, QLinearGradient
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QLineEdit,
@@ -17,6 +23,24 @@ from PyQt6.QtWidgets import (
     QTextEdit, QProgressBar, QSlider, QCheckBox, QFormLayout, QSizePolicy
 
 )
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout,
+    QHBoxLayout,
+    QGridLayout,
+    QFormLayout,
+    QGroupBox,
+    QLabel,
+    QPushButton,
+    QTextEdit,
+    QProgressBar,
+    QFileDialog,
+    QComboBox,
+    QLineEdit,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+)
+
 
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtTextToSpeech import QTextToSpeech
@@ -34,15 +58,23 @@ from utils.dashboard_utils import search4id
 
 BACKGROUND_OPACITY = 0.80
 
+route = 'csv'
 #Temp loading location of license plate data
-df=pd.read_csv(r"./data/JackExampleData/aplr_ocr_results.csv")
+if route == 'csv':
+
+    df=pd.read_csv(r"./data/JackExampleData/aplr_ocr_results.csv")
+
+else:
+
+    df=pd.read_sql(r"./data/JackExampleData/aplr_ocr_results.db")
+
 df = df.dropna(subset = ["confidence"])
 def func(df_list):
     df_list = ast.literal_eval(df_list)
     df_list = [float(x) for x in df_list if not pd.isna(x)]
     return round(sum(df_list)/len(df_list),5)
-    
 
+#Calculate average confidence
 df["avg_confidence"] = df["confidence"].apply(func)
 
 #sort by avg confidence
@@ -65,7 +97,7 @@ DEFAULT_COLUMNS = [
     ("Region", "region")
 ]
 
-
+#This creates the background Image for the dashboard
 class BackgroundWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -85,6 +117,7 @@ class BackgroundWidget(QWidget):
         painter.fillRect(self.rect(), QColor(0, 0, 0, 120))
 
 
+#This is the KITT-style scanner
 class KITTScanner(QWidget):
     def __init__(self):
         super().__init__()
@@ -113,7 +146,7 @@ class KITTScanner(QWidget):
         p.fillRect(QRectF(self.pos, 8, 120, 25), grad)
 
 
-
+#This is the image viewer on the main page
 class ImageViewer(QGraphicsView):
     def __init__(self):
         super().__init__()
@@ -142,6 +175,7 @@ class ImageViewer(QGraphicsView):
         self.fitInView(self.scene.itemsBoundingRect(),
                        Qt.AspectRatioMode.KeepAspectRatio)
 
+#This is the license plate search tab
 class LicensePlateTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -187,7 +221,7 @@ class LicensePlateTab(QWidget):
         content_widget = QWidget()
         content_layout = QHBoxLayout(content_widget)
 
-        # LEFT PANEL
+        # LEFT PANEL The search results will be displayed here
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
 
@@ -238,7 +272,7 @@ class LicensePlateTab(QWidget):
         scroll.setWidget(self.thumb_widget)
         left_layout.addWidget(scroll)
 
-        # RIGHT PANEL
+        # RIGHT PANEL This is where the table will appear with metadata
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
 
@@ -471,53 +505,224 @@ class LicensePlateTab(QWidget):
                         )
                     )
 
+#This is the file upload tab
 class UploadTab(QWidget):
+
     def __init__(self):
         super().__init__()
 
+        self.files = []
+
         self.setStyleSheet("""
-            
-
-            QLabel {
-                background-color: transparent;
-                color: white;
+            QWidget{
+                background:transparent;
+                color:white;
             }
 
-            QTextEdit {
-                background-color: transparent;
-                border: 1px solid gray;
-                color: white;
+            QGroupBox{
+                border:1px solid #3daee9;
+                margin-top:12px;
+                font-weight:bold;
             }
 
-            QProgressBar {
-                background-color: transparent;
-                border: 1px solid gray;
-                color: white;
+            QGroupBox::title{
+                subcontrol-origin:margin;
+                left:10px;
+                padding:0 5px;
             }
 
-            QProgressBar::chunk {
-                background-color: #3daee9;
+            QTextEdit,
+            QLineEdit,
+            QComboBox,
+            QTableWidget{
+
+                background-color:rgba(0,0,0,120);
+                border:1px solid gray;
+                color:white;
+            }
+
+            QPushButton{
+                background:#2d2d2d;
+                border:1px solid #3daee9;
+                padding:6px;
+            }
+
+            QPushButton:hover{
+                background:#3d3d3d;
+            }
+
+            QProgressBar{
+                border:1px solid gray;
+                text-align:center;
+            }
+
+            QProgressBar::chunk{
+                background:#3daee9;
             }
         """)
 
-        layout = QVBoxLayout(self)
+        mainLayout = QVBoxLayout(self)
 
-        layout.addWidget(QLabel("IMAGE UPLOAD SYSTEM"))
+        ##################################################################
+        # TITLE
+        ##################################################################
 
-        self.btn = QPushButton("SELECT IMAGES")
+        title = QLabel("KNIGHT INDUSTRIES MISSION PLANNING WORKSTATION")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("font-size:18pt;font-weight:bold;")
+
+        mainLayout.addWidget(title)
+
+        ##################################################################
+        # MISSION PARAMETERS
+        ##################################################################
+
+        missionBox = QGroupBox("MISSION PARAMETERS")
+
+        form = QFormLayout()
+
+        self.modelCombo = QComboBox()
+        self.modelCombo.addItems([
+            "gpt-5",
+            "gpt-5-mini"
+        ])
+
+        self.promptEdit = QTextEdit()
+        self.promptEdit.setMaximumHeight(80)
+        self.promptEdit.setPlainText(
+            "Describe this image and identify any relevant objects."
+        )
+
+        self.caseNumber = QLineEdit()
+
+        self.priority = QComboBox()
+        self.priority.addItems([
+            "Low",
+            "Normal",
+            "High",
+            "Critical"
+        ])
+
+        self.evidenceType = QComboBox()
+        self.evidenceType.addItems([
+            "License Plate",
+            "Vehicle",
+            "Person",
+            "Document",
+            "General"
+        ])
+
+        self.outputFormat = QComboBox()
+        self.outputFormat.addItems([
+            "JSON",
+            "Text"
+        ])
+
+        form.addRow("AI Model", self.modelCombo)
+        form.addRow("Prompt", self.promptEdit)
+        form.addRow("Case Number", self.caseNumber)
+        form.addRow("Evidence Type", self.evidenceType)
+        form.addRow("Priority", self.priority)
+        form.addRow("Output", self.outputFormat)
+
+        missionBox.setLayout(form)
+
+        mainLayout.addWidget(missionBox)
+
+        ##################################################################
+        # EVIDENCE QUEUE
+        ##################################################################
+
+        queueBox = QGroupBox("EVIDENCE QUEUE")
+
+        queueLayout = QVBoxLayout()
+
+        self.table = QTableWidget(0, 4)
+
+        self.table.setHorizontalHeaderLabels([
+            "Filename",
+            "Status",
+            "Result",
+            "Size (KB)"
+        ])
+
+        self.table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
+
+        queueLayout.addWidget(self.table)
+
+        queueBox.setLayout(queueLayout)
+
+        mainLayout.addWidget(queueBox)
+
+        ##################################################################
+        # UPLOAD CONTROL
+        ##################################################################
+
+        controlBox = QGroupBox("UPLOAD CONTROL")
+
+        controlLayout = QGridLayout()
+
+        self.status = QLabel("● READY")
+        self.status.setStyleSheet(
+            "color:#00ff66;font-weight:bold;"
+        )
+
+        self.imageCount = QLabel("Images Selected : 0")
+
+        self.selectButton = QPushButton("SELECT IMAGES")
+        self.uploadButton = QPushButton("UPLOAD")
+        self.cancelButton = QPushButton("CANCEL")
+
+        self.uploadButton.setEnabled(False)
+        self.cancelButton.setEnabled(False)
 
         self.progress = QProgressBar()
 
+        controlLayout.addWidget(self.status, 0, 0)
+        controlLayout.addWidget(self.imageCount, 0, 1)
+
+        controlLayout.addWidget(self.selectButton, 1, 0)
+        controlLayout.addWidget(self.uploadButton, 1, 1)
+        controlLayout.addWidget(self.cancelButton, 1, 2)
+
+        controlLayout.addWidget(self.progress, 2, 0, 1, 3)
+
+        controlBox.setLayout(controlLayout)
+
+        mainLayout.addWidget(controlBox)
+
+        ##################################################################
+        # MISSION LOG
+        ##################################################################
+
+        logBox = QGroupBox("MISSION LOG")
+
+        logLayout = QVBoxLayout()
+
         self.log = QTextEdit()
-        self.log.setStyleSheet("background-color: transparent;")
+        self.log.setReadOnly(True)
 
-        layout.addWidget(self.btn)
-        layout.addWidget(self.progress)
-        layout.addWidget(self.log)
+        logLayout.addWidget(self.log)
 
-        self.btn.clicked.connect(self.select_images)
+        logBox.setLayout(logLayout)
+
+        mainLayout.addWidget(logBox)
+
+        ##################################################################
+        # SIGNALS
+        ##################################################################
+
+        self.selectButton.clicked.connect(self.select_images)
+        self.uploadButton.clicked.connect(self.start_upload)
+
+    ##################################################################
+    # IMAGE SELECTION
+    ##################################################################
 
     def select_images(self):
+
         files, _ = QFileDialog.getOpenFileNames(
             self,
             "Select Images",
@@ -525,9 +730,149 @@ class UploadTab(QWidget):
             "Images (*.png *.jpg *.jpeg *.bmp)"
         )
 
-        if files:
-            self.log.append(f"Loaded {len(files)} image(s)")
+        if not files:
+            return
 
+        self.files = files
+
+        self.imageCount.setText(
+            f"Images Selected : {len(files)}"
+        )
+
+        self.progress.setMaximum(len(files))
+        self.progress.setValue(0)
+
+        self.table.setRowCount(0)
+
+        for image in files:
+
+            path = Path(image)
+
+            size_kb = path.stat().st_size / 1024
+
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+
+            self.table.setItem(
+                row,
+                0,
+                QTableWidgetItem(path.name)
+            )
+
+            self.table.setItem(
+                row,
+                1,
+                QTableWidgetItem("Queued")
+            )
+
+            self.table.setItem(
+                row,
+                2,
+                QTableWidgetItem("")
+            )
+
+            self.table.setItem(
+                row,
+                3,
+                QTableWidgetItem(f"{size_kb:.1f}")
+            )
+
+        self.uploadButton.setEnabled(True)
+
+        self.log.append(
+            f"Loaded {len(files)} image(s)."
+        )
+
+        self.status.setText("● READY")
+        self.status.setStyleSheet(
+            "color:#00ff66;font-weight:bold;"
+        )
+
+    def get_mission_settings(self):
+
+        return {
+        "model": self.modelCombo.currentText(),
+        "prompt": self.promptEdit.toPlainText(),
+        "case_number": self.caseNumber.text(),
+        "priority": self.priority.currentText(),
+        "evidence_type": self.evidenceType.currentText(),
+        "output_format": self.outputFormat.currentText(),
+        }
+
+    def start_upload(self):
+
+        settings = self.get_mission_settings()
+
+        self.thread = QThread()
+
+        self.worker = UploadWorker(
+            self.files,
+            settings
+        )
+
+    def upload_finished(self):
+
+        self.status.setText("● READY")
+        self.status.setStyleSheet(
+        "color:#00ff66;font-weight:bold;"
+        )
+
+        self.uploadButton.setEnabled(True)
+        self.cancelButton.setEnabled(False)
+
+        self.log.append("Mission complete.")
+
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(self.worker.run)
+
+        self.worker.progress.connect(self.progress.setValue)
+
+        self.worker.log.connect(self.log.append)
+
+        self.worker.finished.connect(self.thread.quit)
+
+        self.thread.finished.connect(self.thread.deleteLater)
+
+        self.worker.finished.connect(self.worker.deleteLater)
+
+        self.worker.finished.connect(self.upload_finished)
+
+        self.thread.start()
+
+        
+
+class UploadWorker(QObject):
+
+    progress = pyqtSignal(int)
+
+    log = pyqtSignal(str)
+
+    finished = pyqtSignal()
+
+    def __init__(self, files, settings):
+        super().__init__()
+
+        self.files = files
+        self.settings = settings
+
+    def run(self):
+
+        for i, image in enumerate(self.files):
+
+            #
+            # API CALL GOES HERE
+            #
+
+            self.log.emit(f"Finished {image}")
+
+            self.progress.emit(i+1)
+
+        self.finished.emit()        
+
+
+
+#This is the setting tab
 class SettingsTab(QWidget):
     def __init__(self, audio_output):
         super().__init__()
@@ -543,6 +888,7 @@ class SettingsTab(QWidget):
         layout.addRow(QCheckBox("Enable Startup Voice"))
         layout.addRow(QCheckBox("Launch Full Screen"))
 
+#This sets the Top banner image
 class Banner(QLabel):
     def __init__(self, pixmap):
         super().__init__()
@@ -559,6 +905,7 @@ class Banner(QLabel):
         )
         self.setPixmap(scaled)
 
+#The Main Window code brings all the pieces together. 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -647,14 +994,15 @@ class MainWindow(QMainWindow):
         self.tts = QTextToSpeech()
         self.tts.say("Knight Industries Vehicle Location System. Online.")
 
-
+#This make the esc button exit the dashboard
     def keyPressEvent(self, event):
 
         if event.key() == Qt.Key.Key_Escape:
             self.close()
 
         super().keyPressEvent(event)
-                 
+
+#Makes is run Full Screen                 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
