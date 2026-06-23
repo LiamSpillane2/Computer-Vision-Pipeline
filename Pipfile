@@ -29,6 +29,7 @@ libreyolo = "*"
 ultralytics = "*"
 sqlalchemy = "*"
 pyqt6 = "*"
+fastapi = {extras = ["standard"], version = "*"}
 
 [dev-packages]
 

@@ -14,6 +14,7 @@ from utils.zero_shot_utils import load_clip_pipeline
 
 import warnings
 from torch.jit import TracerWarning
+
 warnings.filterwarnings("ignore", category=TracerWarning)
 
 
@@ -25,6 +26,7 @@ app = FastAPI(title="Computer Vision Pipeline")
 yolo_model = YOLO("models/Yolo26Model/weights/best.pt")
 clip_pipeline = load_clip_pipeline()
 
+
 def save_upload_to_temp(file: UploadFile) -> str:
     """Save an uploaded file to a temp path and return that path."""
     suffix = Path(file.filename).suffix
@@ -35,6 +37,7 @@ def save_upload_to_temp(file: UploadFile) -> str:
 
 
 # Routes
+
 
 @app.get("/health")
 def health():
@@ -68,11 +71,19 @@ async def detect(
 async def pipeline(
     file: UploadFile = File(...),
     conf: float = Query(default=0.5, description="Confidence threshold (0-1)"),
-    labels: str = Query(default="white, red, License Plate", description="Comma-separated labels for zero-shot"),
-    zs_label: str = Query(default="License Plate", description="Primary label to filter zero-shot results by"),
-    zs_prob_thres: float = Query(default=0.75, description="Zero-shot probability threshold"),
+    labels: str = Query(
+        default="white, red, License Plate",
+        description="Comma-separated labels for zero-shot",
+    ),
+    zs_label: str = Query(
+        default="License Plate",
+        description="Primary label to filter zero-shot results by",
+    ),
+    zs_prob_thres: float = Query(
+        default=0.75, description="Zero-shot probability threshold"
+    ),
     do_zs: bool = Query(default=True),
-    do_ocr: bool = Query(default=True)
+    do_ocr: bool = Query(default=True),
 ):
     """
     Run the full single_image_pipeline on an uploaded image.
@@ -83,33 +94,32 @@ async def pipeline(
 
     try:
         result = single_image_pipeline(
-                image_path=tmp_path,
-                model=yolo_model,
-                zs_results_path=zs_results_path,
-                zs_label_list=label_list,
-                zs_label=zs_label,
-                conf=conf,
-                zs_prob_thres=zs_prob_thres,
-                do_zs=do_zs,
-                do_ocr=do_ocr
-            )
+            image_path=tmp_path,
+            model=yolo_model,
+            zs_results_path=zs_results_path,
+            zs_label_list=label_list,
+            zs_label=zs_label,
+            conf=conf,
+            zs_prob_thres=zs_prob_thres,
+            do_zs=do_zs,
+            do_ocr=do_ocr,
+        )
     finally:
         os.unlink(tmp_path)
         if os.path.exists(zs_results_path):
             os.unlink(zs_results_path)
 
-    csv_path = Path('results.csv')
+    csv_path = Path("results.csv")
 
     # Prepare the data dictionary (combining image and result data)
     print(result)
     for k, v in result.items():
         print(f"{k}: {v}")
-    row_data = {'image': file.filename, **result}
+    row_data = {"image": file.filename, **result}
     df = pd.DataFrame([row_data])
     write_header = not csv_path.exists()
-    df.to_csv(csv_path, mode='a', index=False, header=write_header)
+    df.to_csv(csv_path, mode="a", index=False, header=write_header)
     print("data has been converted to dataframe, and CSV")
     print(df.head())
-    
-    return result
 
+    return result
