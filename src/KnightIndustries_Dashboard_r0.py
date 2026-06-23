@@ -1,4 +1,4 @@
-#Kinight Industries Dashboard License plate recognition and search system
+#Knight Industries Dashboard License plate recognition and search system
 #r0 
 
 from importlib.resources import files
@@ -12,33 +12,41 @@ import numpy as np
 import cv2
 import ast
 import requests
+import sqlite3
+from sqlalchemy import create_engine
+
 
 from PyQt6.QtCore import Qt, QObject, QTimer, QRectF, QUrl, pyqtSignal
-from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor, QLinearGradient
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QLabel, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,
-    QScrollArea, QTabWidget, QPushButton, QFileDialog,
-    QTextEdit, QProgressBar, QSlider, QCheckBox, QFormLayout, QSizePolicy
 
-)
+from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor, QLinearGradient
+
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout,
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QFileDialog,
+    QTextEdit,
+    QProgressBar,
+    QSlider,
+    QCheckBox,
+    QComboBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QVBoxLayout,
     QHBoxLayout,
     QGridLayout,
     QFormLayout,
     QGroupBox,
-    QLabel,
-    QPushButton,
-    QTextEdit,
-    QProgressBar,
-    QFileDialog,
-    QComboBox,
-    QLineEdit,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
+    QSizePolicy,
+    QScrollArea,
+    QTabWidget,
+    QGraphicsView,
+    QGraphicsScene,
+    QGraphicsPixmapItem,
 )
 
 
@@ -58,24 +66,33 @@ from utils.dashboard_utils import search4id
 
 BACKGROUND_OPACITY = 0.80
 
-route = 'csv'
+route = 'sql'
 #Temp loading location of license plate data
 if route == 'csv':
 
     df=pd.read_csv(r"./data/JackExampleData/aplr_ocr_results.csv")
 
 else:
+    query = '''
+    SELECT * 
+    FROM cvp_results
+    ''' 
+    conn_str = Path(__file__).parent / "../data/cvp_database.db"
+    engine = create_engine(f"sqlite:///{conn_str}")
+    df = pd.read_sql(query, engine)
+    #df=pd.read_sql(r"./data/JackExampleData/aplr_ocr_results.db")
 
-    df=pd.read_sql(r"./data/JackExampleData/aplr_ocr_results.db")
-
-df = df.dropna(subset = ["confidence"])
+df = df.dropna(subset = ["ocr_confidence"])
 def func(df_list):
+    #print(df_list)
+    if df_list ==  "NA":
+        return np.nan
     df_list = ast.literal_eval(df_list)
     df_list = [float(x) for x in df_list if not pd.isna(x)]
     return round(sum(df_list)/len(df_list),5)
 
 #Calculate average confidence
-df["avg_confidence"] = df["confidence"].apply(func)
+df["avg_confidence"] = df["ocr_confidence"].apply(func)
 
 #sort by avg confidence
 df = df.sort_values(
@@ -85,16 +102,16 @@ df = df.sort_values(
 
 SEARCH_COLUMNS = [
 
-    ("Plate", "text"),
+    ("Plate", "ocr_text"),
     ("Avg Confidence", "avg_confidence"),
-    ("Region", "region"),
-    ("File Path", "file_path")
+    ("Region", "ocr_region"),
+    ("File Path", "file_name")
 ]
 
 DEFAULT_COLUMNS = [
-    ("Plate", "text"),
+    ("Plate", "ocr_text"),
     ("Avg Confidence", "avg_confidence"),
-    ("Region", "region")
+    ("Region", "ocr_region")
 ]
 
 #This creates the background Image for the dashboard
@@ -337,7 +354,7 @@ class LicensePlateTab(QWidget):
             lbl.setPixmap(pix)
 
         lbl.setToolTip(name)
-        lbl.mousePressEvent = lambda e, p=path: self.viewer.load_image(p)
+        lbl.mousePressEvent = lambda e, p=path: self.on_thumbnail_click(p)
         self.thumb_layout.addWidget(lbl)
 
     def update_dashboard(self):
@@ -346,21 +363,21 @@ class LicensePlateTab(QWidget):
 
         self.clear_thumbs()
 
-        imagedir = r"./data/license_plate_detection/train/images"
+        imagedir = r"./data/license_plate_detection/test/images"
 
         # Columns to show when searching
         SEARCH_COLUMNS = [
-            ("Plate", "text"),
+            ("Plate", "ocr_text"),
             ("Avg Confidence", "avg_confidence"),
-            ("Region", "region"),
-            ("File Path", "file_path")
+            ("Region", "ocr_region"),
+            ("File Path", "file_name")
         ]
 
         # Columns to show by default
         DEFAULT_COLUMNS = [
-            ("Plate", "text"),
+            ("Plate", "ocr_text"),
             ("Avg Confidence", "avg_confidence"),
-            ("Region", "region")
+            ("Region", "ocr_region")
         ]
 
         if txt:
@@ -423,23 +440,15 @@ class LicensePlateTab(QWidget):
                 zip(df.columns, results[0])
             )
 
-            bbox = ast.literal_eval(row_dict["bbox"])
+            bbox = ast.literal_eval(row_dict["yolo_xy_coords"])
 
             # Assuming format = [x1, x2, y1, y2]
-            x1, x2, y1, y2 = bbox
+            x1, y1, x2, y2 = bbox
 
-            cv2.rectangle(
-                img,
-                (int(x1), int(y1)),
-                (int(x2), int(y2)),
-                (0, 255, 0),
-                3
-            )
+            bbox = ast.literal_eval(row_dict["yolo_xy_coords"])
+            self.load_image_with_bbox(first_img, bbox)
 
-            temp_path = "_temp_bbox.jpg"
-            cv2.imwrite(temp_path, img)
 
-            self.viewer.load_image(temp_path)
 
 
             # ----------------------------------
@@ -504,6 +513,39 @@ class LicensePlateTab(QWidget):
                             str(value)
                         )
                     )
+    def load_image_with_bbox(self, image_path, bbox=None):
+        import cv2
+
+        img = cv2.imread(image_path)
+
+        if bbox is not None:
+            x1, y1, x2, y2 = bbox
+            cv2.rectangle(
+             img,
+                (int(x1), int(y1)),
+                (int(x2), int(y2)),
+                (0, 255, 0),
+                3
+            )
+
+        temp_path = "_temp_bbox.jpg"
+        cv2.imwrite(temp_path, img)
+
+        self.viewer.load_image(temp_path) 
+
+    def on_thumbnail_click(self, image_path):
+        # You likely need to look up bbox from df using image name
+        import ast
+
+        name = os.path.splitext(os.path.basename(image_path))[0]
+
+        row = df[df["file_name"] == name]
+
+        if not row.empty:
+            bbox = ast.literal_eval(row.iloc[0]["yolo_xy_coords"])
+            self.load_image_with_bbox(image_path, bbox)
+        else:
+            self.load_image_with_bbox(image_path)                   
 
 #This is the file upload tab
 class UploadTab(QWidget):
@@ -580,7 +622,7 @@ class UploadTab(QWidget):
         missionBox = QGroupBox("MISSION PARAMETERS")
 
         form = QFormLayout()
-
+        #These boxes need to be linked to API calls.  So it can "dynamically build the API call."
         self.modelCombo = QComboBox()
         self.modelCombo.addItems([
             "gpt-5",
@@ -841,7 +883,7 @@ class UploadTab(QWidget):
         self.thread.start()
 
         
-
+#API Worker  calls the API 
 class UploadWorker(QObject):
 
     progress = pyqtSignal(int)

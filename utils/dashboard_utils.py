@@ -18,7 +18,7 @@ def add2metadata(zsc_data, ocr_output):
 def search4id(metadata, search_text):
 
     filtered_df = metadata[
-        metadata["text"].str.contains(
+        metadata["ocr_text"].str.contains(
             search_text,
             case=False,
             na=False
@@ -35,8 +35,8 @@ def search4id(metadata, search_text):
 
     return (
         filtered_df.values.tolist(),
-        filtered_df["file_path"].tolist(),
-        filtered_df["text"].tolist(),
+        filtered_df["file_name"].tolist(),
+        filtered_df["ocr_text"].tolist(),
         filtered_df["avg_confidence"].tolist()
     )
 
