@@ -85,27 +85,6 @@ def single_image_pipeline(
         "ocr_predictions": ocr_predictions,
     })
 
-    print(
-        "\n\n====================================== RESULTS ======================================"
-    )
-    print(
-        "\n---------------------------------- OBJECT DETECTION ---------------------------------\n"
-    )
-    print(f"Bounding boxes: {result['bounding_boxes']}")
-    print(f"Class IDs: {result['class_ids']}")
-    print(f"Confidences: {result['confidences']}")
-    if do_zs:
-        print(
-            "\n-------------------------------------- ZERO-SHOT ------------------------------------\n"
-        )
-        print(f"Zero-shot Results: {result['zs_results']}")
-        print(f"Zero-shot P Results: {result['zs_p_results']}")
-    if do_ocr:
-        print(
-            "\n----------------------------------------- OCR ---------------------------------------\n"
-        )
-        print(f"OCR Predictions: {result['ocr_predictions']}")
-
     return result
 
 
