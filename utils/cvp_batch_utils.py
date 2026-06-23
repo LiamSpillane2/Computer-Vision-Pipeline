@@ -169,19 +169,20 @@ def run_batch_cvp(
             clip_dfs = pd.DataFrame([])
 
         
-        for i, img, name in zip(range(0, batch_size), bgr_images, names):
+        for i, (img, name) in enumerate(zip(bgr_images, names)):
+
             if do_ocr:
                 predict_dict = alpr_single_image(img, name, alpr_model)
             else:
                 predict_dict = {}
 
             xyxy, cls_id, conf = yolo_out[i]
-            clip_df = clip_dfs[i]
 
-            if clip_df.empty:
-                df_row_dict = {}
+            if do_zs:
+                clip_df = clip_dfs[i]
+                df_row_dict = {} if clip_df.empty else clip_df.to_dict()
             else:
-                df_row_dict = clip_df.to_dict()
+                df_row_dict = {}
 
             master_list.append(
                 {
@@ -189,7 +190,7 @@ def run_batch_cvp(
                     "yolo_model_confidence": conf,
                     "yolo_class_id": cls_id,
                     "yolo_xy_coords": xyxy,
-                    **predict_dict[0],
+                    **predict_dict,
                     **df_row_dict,
                 }
             )
