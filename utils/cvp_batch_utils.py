@@ -173,6 +173,9 @@ def run_batch_cvp(
 
             if do_ocr:
                 predict_dict = alpr_single_image(img, name, alpr_model)
+
+                if isinstance(predict_dict, list):
+                    predict_dict = predict_dict[0] if predict_dict else {}
             else:
                 predict_dict = {}
 
