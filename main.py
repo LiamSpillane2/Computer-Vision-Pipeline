@@ -34,25 +34,6 @@ def save_upload_to_temp(file: UploadFile) -> str:
     return tmp.name
 
 
-# def parse_pipeline_output(captured: str) -> dict:
-#     """
-#     single_image_pipeline() prints its results instead of returning them.
-#     This function captures that printed output and parses it into a dict.
-#     """
-#     result = {}
-
-#     for line in captured.splitlines():
-#         line = line.strip()
-#         if line.startswith("Bounding boxes:"):
-#             result["bounding_boxes"] = line.removeprefix("Bounding boxes:").strip()
-#         elif line.startswith("Class IDs:"):
-#             result["class_ids"] = line.removeprefix("Class IDs:").strip()
-#         elif line.startswith("Confidences:"):
-#             result["confidences"] = line.removeprefix("Confidences:").strip()
-
-#     return result
-
-
 # Routes
 
 @app.get("/health")
@@ -101,10 +82,7 @@ async def pipeline(
     zs_results_path = tmp_path + "_zs_results.json"
 
     try:
-        result = single_image_pipeline(# Capture printed output from single_image_pipeline
-        # buffer = io.StringIO()
-        # with redirect_stdout(buffer):
-        #     single_image_pipeline(
+        result = single_image_pipeline(
                 image_path=tmp_path,
                 model=yolo_model,
                 zs_results_path=zs_results_path,
@@ -120,13 +98,18 @@ async def pipeline(
         if os.path.exists(zs_results_path):
             os.unlink(zs_results_path)
 
-    csv_path = Path('results1.csv')
+    csv_path = Path('results.csv')
 
     # Prepare the data dictionary (combining image and result data)
+    print(result)
+    for k, v in result.items():
+        print(f"{k}: {v}")
     row_data = {'image': file.filename, **result}
     df = pd.DataFrame([row_data])
     write_header = not csv_path.exists()
     df.to_csv(csv_path, mode='a', index=False, header=write_header)
-    # return result
-# parse_pipeline_output(buffer.getvalue())
+    print("data has been converted to dataframe, and CSV")
+    print(df.head())
+    
+    return result
 
