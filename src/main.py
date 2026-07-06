@@ -75,13 +75,6 @@ async def pipeline(
         default="white, red, License Plate",
         description="Comma-separated labels for zero-shot",
     ),
-    zs_label: str = Query(
-        default="License Plate",
-        description="Primary label to filter zero-shot results by",
-    ),
-    zs_prob_thres: float = Query(
-        default=0.75, description="Zero-shot probability threshold"
-    ),
     do_zs: bool = Query(default=True),
     do_ocr: bool = Query(default=True),
 ):
@@ -98,9 +91,7 @@ async def pipeline(
             model=yolo_model,
             zs_results_path=zs_results_path,
             zs_label_list=label_list,
-            zs_label=zs_label,
             conf=conf,
-            zs_prob_thres=zs_prob_thres,
             do_zs=do_zs,
             do_ocr=do_ocr,
         )

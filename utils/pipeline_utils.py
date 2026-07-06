@@ -7,23 +7,15 @@ def do_zero_shot(
     image_folder: str,
     results_path: str,
     label_list: list[str],
-    label: str,
-    prob_thres: float = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
     classifier = load_clip_pipeline()
     results = run_classification(
         classifier=classifier,
         image_folder=image_folder,
         label_list=label_list,
     )
-    p_results = prob_results(
-        results,
-        results_path,
-        label=label,
-        prob_thres=prob_thres,
-    )
 
-    return results, p_results
+    return results
 
 
 def crop_image(image_path: str, bounding_boxes: list[str]) -> list:
