@@ -34,8 +34,6 @@ def single_image_pipeline(
     do_ocr: bool = False,
     save: bool = False,
     conf: float = 0.5,
-    zs_label: str = None,
-    zs_prob_thres: float = 0.75,
     alpr_model=None,
 ):
     # Run image through object detection model
@@ -53,14 +51,12 @@ def single_image_pipeline(
     )
 
     # Zero-Shot Classification
-    results, p_results = None, None
+    results = None
     if do_zs:
-        results, p_results = do_zero_shot(
+        results = do_zero_shot(
             image_folder=image_path,
             results_path=zs_results_path,
             label_list=zs_label_list,
-            label=zs_label,
-            prob_thres=zs_prob_thres,
         )
 
     # OCR Text Extraction
@@ -76,14 +72,15 @@ def single_image_pipeline(
                 )
             )
 
-    result = _convert_numpy({
-        "bounding_boxes": bounding_boxes,
-        "class_ids": class_ids,
-        "confidences": confidences,
-        "zs_results": results,
-        "zs_p_results": p_results,
-        "ocr_predictions": ocr_predictions,
-    })
+    result = _convert_numpy(
+        {
+            "bounding_boxes": bounding_boxes,
+            "class_ids": class_ids,
+            "confidences": confidences,
+            "zs_results": results,
+            "ocr_predictions": ocr_predictions,
+        }
+    )
 
     return result
 
@@ -107,7 +104,5 @@ if __name__ == "__main__":
         do_ocr=True,
         save=False,
         conf=0.5,
-        zs_label="white",
-        zs_prob_thres=0.6,
         alpr_model=None,  # will default to fast_alpr.ALPR()
     )

@@ -1,26 +1,24 @@
-#Knight Industries Dashboard License plate recognition and search system
-#r0 
+# Knight Industries Dashboard License plate recognition and search system
+# r0
 
-from importlib.resources import files
-from pathlib import Path
-import sys, os
-from unittest import result
-from urllib import response
-from xmlrpc import client
-import pandas as pd
-import numpy as np
+import os
+import sys
 import cv2
 import ast
+import json
 import requests
-import sqlite3
+import numpy as np
+import pandas as pd
+from pathlib import Path
 from sqlalchemy import create_engine
 
 
-from PyQt6.QtCore import Qt, QObject, QTimer, QRectF, QUrl, pyqtSignal
+from PyQt6.QtCore import Qt
 
-from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor, QLinearGradient
+from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor
 
 from PyQt6.QtWidgets import (
+    QTextEdit,
     QApplication,
     QMainWindow,
     QWidget,
@@ -28,10 +26,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QFileDialog,
-    QTextEdit,
     QProgressBar,
-    QSlider,
-    QCheckBox,
     QComboBox,
     QTableWidget,
     QTableWidgetItem,
@@ -47,78 +42,75 @@ from PyQt6.QtWidgets import (
     QGraphicsView,
     QGraphicsScene,
     QGraphicsPixmapItem,
+    QDoubleSpinBox,
 )
 
-
-from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
-from PyQt6.QtTextToSpeech import QTextToSpeech
-from sympy import root
-from torch import layout
-
-#All this magic to make the Utils folder work.
-#----------------------------------
+# All this magic to make the Utils folder work.
+# ----------------------------------
 import sys
 from pathlib import Path
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 from utils.dashboard_utils import search4id
-#-------------------------------------
+
+# -------------------------------------
 
 BACKGROUND_OPACITY = 0.80
 
-route = 'sql'
-#Temp loading location of license plate data
-if route == 'csv':
+route = "sql"
+# Temp loading location of license plate data
+if route == "csv":
 
-    df=pd.read_csv(r"./data/JackExampleData/aplr_ocr_results.csv")
+    df = pd.read_csv(r"./data/JackExampleData/aplr_ocr_results.csv")
 
 else:
-    query = '''
+    query = """
     SELECT * 
     FROM cvp_results
-    ''' 
+    """
     conn_str = Path(__file__).parent / "../data/cvp_database.db"
     engine = create_engine(f"sqlite:///{conn_str}")
     df = pd.read_sql(query, engine)
-    #df=pd.read_sql(r"./data/JackExampleData/aplr_ocr_results.db")
+    # df=pd.read_sql(r"./data/JackExampleData/aplr_ocr_results.db")
 
-df = df.dropna(subset = ["ocr_confidence"])
+df = df.dropna(subset=["ocr_confidence"])
+
+
 def func(df_list):
-    #print(df_list)
-    if df_list ==  "NA":
+    # print(df_list)
+    if df_list == "NA":
         return np.nan
     df_list = ast.literal_eval(df_list)
     df_list = [float(x) for x in df_list if not pd.isna(x)]
-    return round(sum(df_list)/len(df_list),5)
+    return round(sum(df_list) / len(df_list), 5)
 
-#Calculate average confidence
+
+# Calculate average confidence
 df["avg_confidence"] = df["ocr_confidence"].apply(func)
 
-#sort by avg confidence
-df = df.sort_values(
-    by="avg_confidence",
-    ascending=False
-)
+# sort by avg confidence
+df = df.sort_values(by="avg_confidence", ascending=False)
 
 SEARCH_COLUMNS = [
-
     ("Plate", "ocr_text"),
     ("Avg Confidence", "avg_confidence"),
     ("Region", "ocr_region"),
-    ("File Path", "file_name")
+    ("File Path", "file_name"),
 ]
 
 DEFAULT_COLUMNS = [
     ("Plate", "ocr_text"),
     ("Avg Confidence", "avg_confidence"),
-    ("Region", "ocr_region")
+    ("Region", "ocr_region"),
 ]
 
-#This creates the background Image for the dashboard
+
+# This creates the background Image for the dashboard
 class BackgroundWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.bg = QPixmap("data/assets/background.jpg")
+        self.bg = QPixmap("data/assets/Bwxt_backgrnd.jpg")
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -126,7 +118,7 @@ class BackgroundWidget(QWidget):
             scaled = self.bg.scaled(
                 self.size(),
                 Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                Qt.TransformationMode.SmoothTransformation
+                Qt.TransformationMode.SmoothTransformation,
             )
             painter.setOpacity(BACKGROUND_OPACITY)
             painter.drawPixmap(0, 0, scaled)
@@ -134,36 +126,7 @@ class BackgroundWidget(QWidget):
         painter.fillRect(self.rect(), QColor(0, 0, 0, 120))
 
 
-#This is the KITT-style scanner
-class KITTScanner(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.pos = 0
-        self.direction = 1
-        self.setMinimumHeight(45)
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.animate)
-        self.timer.start(15)
-
-    def animate(self):
-        self.pos += self.direction * 8
-        if self.pos > self.width() - 120:
-            self.direction = -1
-        if self.pos < 0:
-            self.direction = 1
-        self.update()
-
-    def paintEvent(self, event):
-        p = QPainter(self)
-        p.fillRect(self.rect(), QColor(10, 10, 10))
-        grad = QLinearGradient(self.pos, 0, self.pos + 120, 0)
-        grad.setColorAt(0.0, QColor(255,0,0,0))
-        grad.setColorAt(0.5, QColor(255,0,0,255))
-        grad.setColorAt(1.0, QColor(255,0,0,0))
-        p.fillRect(QRectF(self.pos, 8, 120, 25), grad)
-
-
-#This is the image viewer on the main page
+# This is the image viewer on the main page
 class ImageViewer(QGraphicsView):
     def __init__(self):
         super().__init__()
@@ -186,23 +149,23 @@ class ImageViewer(QGraphicsView):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         h, w, c = img.shape
-        qimg = QImage(img.data, w, h, c*w, QImage.Format.Format_RGB888)
+        qimg = QImage(img.data, w, h, c * w, QImage.Format.Format_RGB888)
 
         self.scene.addItem(QGraphicsPixmapItem(QPixmap.fromImage(qimg)))
-        self.fitInView(self.scene.itemsBoundingRect(),
-                       Qt.AspectRatioMode.KeepAspectRatio)
+        self.fitInView(
+            self.scene.itemsBoundingRect(), Qt.AspectRatioMode.KeepAspectRatio
+        )
 
-#This is the license plate search tab
+
+# This is the license plate search tab
 class LicensePlateTab(QWidget):
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout(self)
 
-        self.setWindowTitle("Knight Industries Intelligence Console")
-        #self.resize(1800, 1000)
-        self.setAttribute(
-        Qt.WidgetAttribute.WA_TranslucentBackground
-        )
+        self.setWindowTitle("BDSC COMPUTER VISION PIPELINE DASHBOARD")
+        # self.resize(1800, 1000)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self.setStyleSheet("""
             background: transparent;
@@ -226,8 +189,6 @@ class LicensePlateTab(QWidget):
         """)
 
         layout.addWidget(subtitle)
-
-        layout.addWidget(KITTScanner())
 
         self.search = QLineEdit()
         self.search.setPlaceholderText("Enter Vehicle Search")
@@ -293,7 +254,7 @@ class LicensePlateTab(QWidget):
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
 
-        #right_panel.setStyleSheet("border:none;")
+        # right_panel.setStyleSheet("border:none;")
 
         db_label = QLabel("VEHICLE DATABASE")
         db_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -347,10 +308,7 @@ class LicensePlateTab(QWidget):
         lbl = QLabel()
 
         if os.path.exists(path):
-            pix = QPixmap(path).scaled(
-                120, 120,
-                Qt.AspectRatioMode.KeepAspectRatio
-            )
+            pix = QPixmap(path).scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio)
             lbl.setPixmap(pix)
 
         lbl.setToolTip(name)
@@ -370,57 +328,38 @@ class LicensePlateTab(QWidget):
             ("Plate", "ocr_text"),
             ("Avg Confidence", "avg_confidence"),
             ("Region", "ocr_region"),
-            ("File Path", "file_name")
+            ("File Path", "file_name"),
         ]
 
         # Columns to show by default
         DEFAULT_COLUMNS = [
             ("Plate", "ocr_text"),
             ("Avg Confidence", "avg_confidence"),
-            ("Region", "ocr_region")
+            ("Region", "ocr_region"),
         ]
 
         if txt:
 
-            results, img_name, plate_text, confidence = search4id(
-                df,
-                txt
-            )
+            results, img_name, plate_text, confidence = search4id(df, txt)
 
             if not img_name:
 
                 self.table.setRowCount(1)
                 self.table.setColumnCount(1)
-                self.table.setHorizontalHeaderLabels(
-                    ["Search Results"]
-                )
+                self.table.setHorizontalHeaderLabels(["Search Results"])
 
-                self.table.setItem(
-                    0,
-                    0,
-                    QTableWidgetItem("No match found")
-                )
+                self.table.setItem(0, 0, QTableWidgetItem("No match found"))
 
                 return
 
             # ----------------------------------
             # Add thumbnails for all matches
             # ----------------------------------
-            for name, plate, conf in zip(
-                img_name,
-                plate_text,
-                confidence
-            ):
+            for name, plate, conf in zip(img_name, plate_text, confidence):
 
-                path = os.path.join(
-                    imagedir,
-                    name + ".jpg"
-                )
+                path = os.path.join(imagedir, name + ".jpg")
 
-                self.add_thumb(
-                    f"{plate} ({float(conf):.2f})",
-                    path
-                )
+                self.add_thumb(f"{plate} ({float(conf):.2f})", path)
 
             # ----------------------------------
             # Load first matching image
@@ -428,17 +367,12 @@ class LicensePlateTab(QWidget):
             import cv2
             import ast
 
-            first_img = os.path.join(
-                imagedir,
-                img_name[0] + ".jpg"
-            )
+            first_img = os.path.join(imagedir, img_name[0] + ".jpg")
 
             img = cv2.imread(first_img)
 
             # Get first matching dataframe row
-            row_dict = dict(
-                zip(df.columns, results[0])
-            )
+            row_dict = dict(zip(df.columns, results[0]))
 
             bbox = ast.literal_eval(row_dict["yolo_xy_coords"])
 
@@ -448,41 +382,23 @@ class LicensePlateTab(QWidget):
             bbox = ast.literal_eval(row_dict["yolo_xy_coords"])
             self.load_image_with_bbox(first_img, bbox)
 
-
-
-
             # ----------------------------------
             # Populate search results table
             # ----------------------------------
             self.table.setRowCount(len(results))
             self.table.setColumnCount(len(SEARCH_COLUMNS))
 
-            self.table.setHorizontalHeaderLabels(
-                [col[0] for col in SEARCH_COLUMNS]
-            )
+            self.table.setHorizontalHeaderLabels([col[0] for col in SEARCH_COLUMNS])
 
             for r, row_data in enumerate(results):
 
-                row_dict = dict(
-                    zip(df.columns, row_data)
-                )
+                row_dict = dict(zip(df.columns, row_data))
 
-                for c, (_, df_col) in enumerate(
-                    SEARCH_COLUMNS
-                ):
+                for c, (_, df_col) in enumerate(SEARCH_COLUMNS):
 
-                    value = row_dict.get(
-                        df_col,
-                        ""
-                    )
+                    value = row_dict.get(df_col, "")
 
-                    self.table.setItem(
-                        r,
-                        c,
-                        QTableWidgetItem(
-                            str(value)
-                        )
-                    )
+                    self.table.setItem(r, c, QTableWidgetItem(str(value)))
 
         else:
 
@@ -490,29 +406,18 @@ class LicensePlateTab(QWidget):
             # Default table view
             # ----------------------------------
             self.table.setRowCount(len(df))
-            self.table.setColumnCount(
-                len(DEFAULT_COLUMNS)
-            )
+            self.table.setColumnCount(len(DEFAULT_COLUMNS))
 
-            self.table.setHorizontalHeaderLabels(
-                [col[0] for col in DEFAULT_COLUMNS]
-            )
+            self.table.setHorizontalHeaderLabels([col[0] for col in DEFAULT_COLUMNS])
 
             for r in range(len(df)):
 
-                for c, (_, df_col) in enumerate(
-                    DEFAULT_COLUMNS
-                ):
+                for c, (_, df_col) in enumerate(DEFAULT_COLUMNS):
 
                     value = df.iloc[r][df_col]
 
-                    self.table.setItem(
-                        r,
-                        c,
-                        QTableWidgetItem(
-                            str(value)
-                        )
-                    )
+                    self.table.setItem(r, c, QTableWidgetItem(str(value)))
+
     def load_image_with_bbox(self, image_path, bbox=None):
         import cv2
 
@@ -520,18 +425,12 @@ class LicensePlateTab(QWidget):
 
         if bbox is not None:
             x1, y1, x2, y2 = bbox
-            cv2.rectangle(
-             img,
-                (int(x1), int(y1)),
-                (int(x2), int(y2)),
-                (0, 255, 0),
-                3
-            )
+            cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 3)
 
         temp_path = "_temp_bbox.jpg"
         cv2.imwrite(temp_path, img)
 
-        self.viewer.load_image(temp_path) 
+        self.viewer.load_image(temp_path)
 
     def on_thumbnail_click(self, image_path):
         # You likely need to look up bbox from df using image name
@@ -545,9 +444,10 @@ class LicensePlateTab(QWidget):
             bbox = ast.literal_eval(row.iloc[0]["yolo_xy_coords"])
             self.load_image_with_bbox(image_path, bbox)
         else:
-            self.load_image_with_bbox(image_path)                   
+            self.load_image_with_bbox(image_path)
 
-#This is the file upload tab
+
+# This is the file upload tab
 class UploadTab(QWidget):
 
     def __init__(self):
@@ -609,93 +509,57 @@ class UploadTab(QWidget):
         # TITLE
         ##################################################################
 
-        title = QLabel("KNIGHT INDUSTRIES MISSION PLANNING WORKSTATION")
+        title = QLabel("BDSC COMPUTER VISION PIPELINE")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size:18pt;font-weight:bold;")
 
         mainLayout.addWidget(title)
 
         ##################################################################
-        # MISSION PARAMETERS
+        # PARAMETERS
         ##################################################################
 
-        missionBox = QGroupBox("MISSION PARAMETERS")
+        missionBox = QGroupBox("PARAMETERS")
 
         form = QFormLayout()
-        #These boxes need to be linked to API calls.  So it can "dynamically build the API call."
-        self.modelCombo = QComboBox()
-        self.modelCombo.addItems([
-            "gpt-5",
-            "gpt-5-mini"
-        ])
+        # These boxes need to be linked to API calls.  So it can "dynamically build the API call."
+        # Confidence
+        self.conf = QDoubleSpinBox()
+        self.conf.setValue(0.75)
+        self.conf.setRange(0.0, 1.0)
+        self.conf.setSingleStep(0.01)
+        # Labels
+        self.labels = QLineEdit()
+        self.labels.setPlaceholderText("Comma-seperated values for Zero-Shot")
+        # OCR
+        self.do_ocr = QComboBox()
+        self.do_ocr.addItems(["true", "false"])
+        # Zero-Shot
+        self.do_zs = QComboBox()
+        self.do_zs.addItems(["true", "false"])
 
-        self.promptEdit = QTextEdit()
-        self.promptEdit.setMaximumHeight(80)
-        self.promptEdit.setPlainText(
-            "Describe this image and identify any relevant objects."
-        )
-
-        self.caseNumber = QLineEdit()
-
-        self.priority = QComboBox()
-        self.priority.addItems([
-            "Low",
-            "Normal",
-            "High",
-            "Critical"
-        ])
-
-        self.evidenceType = QComboBox()
-        self.evidenceType.addItems([
-            "License Plate",
-            "Vehicle",
-            "Person",
-            "Document",
-            "General"
-        ])
-
-        self.outputFormat = QComboBox()
-        self.outputFormat.addItems([
-            "JSON",
-            "Text"
-        ])
-
-        form.addRow("AI Model", self.modelCombo)
-        form.addRow("Prompt", self.promptEdit)
-        form.addRow("Case Number", self.caseNumber)
-        form.addRow("Evidence Type", self.evidenceType)
-        form.addRow("Priority", self.priority)
-        form.addRow("Output", self.outputFormat)
+        form.addRow("Bounding Box Confidence", self.conf)
+        form.addRow("Zero-Shot Labels", self.labels)
+        form.addRow("Do Zero-Shot?", self.do_zs)
+        form.addRow("Do OCR?", self.do_ocr)
 
         missionBox.setLayout(form)
 
         mainLayout.addWidget(missionBox)
 
         ##################################################################
-        # EVIDENCE QUEUE
+        # IMAGE QUEUE
         ##################################################################
 
-        queueBox = QGroupBox("EVIDENCE QUEUE")
-
+        queueBox = QGroupBox("IMAGE QUEUE")
         queueLayout = QVBoxLayout()
-
-        self.table = QTableWidget(0, 4)
-
-        self.table.setHorizontalHeaderLabels([
-            "Filename",
-            "Status",
-            "Result",
-            "Size (KB)"
-        ])
-
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(["Filename", "Status", "Size (KB)"])
         self.table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
-
         queueLayout.addWidget(self.table)
-
         queueBox.setLayout(queueLayout)
-
         mainLayout.addWidget(queueBox)
 
         ##################################################################
@@ -707,39 +571,36 @@ class UploadTab(QWidget):
         controlLayout = QGridLayout()
 
         self.status = QLabel("● READY")
-        self.status.setStyleSheet(
-            "color:#00ff66;font-weight:bold;"
-        )
+        self.status.setStyleSheet("color:#00ff66;font-weight:bold;")
 
         self.imageCount = QLabel("Images Selected : 0")
 
         self.selectButton = QPushButton("SELECT IMAGES")
-        self.uploadButton = QPushButton("UPLOAD")
-        self.cancelButton = QPushButton("CANCEL")
+        self.uploadButton = QPushButton("RUN PIPELINE")
 
         self.uploadButton.setEnabled(False)
-        self.cancelButton.setEnabled(False)
 
         self.progress = QProgressBar()
+        self.progress.setRange(0, 100)
+        self.progress.setValue(0)
 
         controlLayout.addWidget(self.status, 0, 0)
         controlLayout.addWidget(self.imageCount, 0, 1)
 
         controlLayout.addWidget(self.selectButton, 1, 0)
         controlLayout.addWidget(self.uploadButton, 1, 1)
-        controlLayout.addWidget(self.cancelButton, 1, 2)
 
-        controlLayout.addWidget(self.progress, 2, 0, 1, 3)
+        controlLayout.addWidget(self.progress, 2, 0, 1, 2)
 
         controlBox.setLayout(controlLayout)
 
         mainLayout.addWidget(controlBox)
 
         ##################################################################
-        # MISSION LOG
+        # PROGRESS LOG
         ##################################################################
 
-        logBox = QGroupBox("MISSION LOG")
+        logBox = QGroupBox("PROGRESS LOG")
 
         logLayout = QVBoxLayout()
 
@@ -764,173 +625,59 @@ class UploadTab(QWidget):
     ##################################################################
 
     def select_images(self):
-
         files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Select Images",
-            "",
-            "Images (*.png *.jpg *.jpeg *.bmp)"
+            self, "Select Images", "", "Images (*.png *.jpg *.jpeg *.bmp)"
         )
 
         if not files:
             return
 
         self.files = files
-
-        self.imageCount.setText(
-            f"Images Selected : {len(files)}"
-        )
-
-        self.progress.setMaximum(len(files))
-        self.progress.setValue(0)
-
+        self.imageCount.setText(f"Images Selected : {len(files)}")
         self.table.setRowCount(0)
 
         for image in files:
-
             path = Path(image)
-
             size_kb = path.stat().st_size / 1024
-
             row = self.table.rowCount()
             self.table.insertRow(row)
-
-            self.table.setItem(
-                row,
-                0,
-                QTableWidgetItem(path.name)
-            )
-
-            self.table.setItem(
-                row,
-                1,
-                QTableWidgetItem("Queued")
-            )
-
-            self.table.setItem(
-                row,
-                2,
-                QTableWidgetItem("")
-            )
-
-            self.table.setItem(
-                row,
-                3,
-                QTableWidgetItem(f"{size_kb:.1f}")
-            )
+            self.table.setItem(row, 0, QTableWidgetItem(path.name))
+            self.table.setItem(row, 1, QTableWidgetItem("Queued"))
+            self.table.setItem(row, 2, QTableWidgetItem(f"{size_kb:.1f}"))
 
         self.uploadButton.setEnabled(True)
 
-        self.log.append(
-            f"Loaded {len(files)} image(s)."
-        )
+        self.log.append(f"Loaded {len(files)} image(s).")
 
         self.status.setText("● READY")
-        self.status.setStyleSheet(
-            "color:#00ff66;font-weight:bold;"
-        )
-
-    def get_mission_settings(self):
-
-        return {
-        "model": self.modelCombo.currentText(),
-        "prompt": self.promptEdit.toPlainText(),
-        "case_number": self.caseNumber.text(),
-        "priority": self.priority.currentText(),
-        "evidence_type": self.evidenceType.currentText(),
-        "output_format": self.outputFormat.currentText(),
-        }
+        self.status.setStyleSheet("color:#00ff66;font-weight:bold;")
 
     def start_upload(self):
 
-        settings = self.get_mission_settings()
-
-        self.thread = QThread()
-
-        self.worker = UploadWorker(
-            self.files,
-            settings
-        )
-
-    def upload_finished(self):
-
-        self.status.setText("● READY")
-        self.status.setStyleSheet(
-        "color:#00ff66;font-weight:bold;"
-        )
-
-        self.uploadButton.setEnabled(True)
-        self.cancelButton.setEnabled(False)
-
-        self.log.append("Mission complete.")
-
-        self.worker.moveToThread(self.thread)
-
-        self.thread.started.connect(self.worker.run)
-
-        self.worker.progress.connect(self.progress.setValue)
-
-        self.worker.log.connect(self.log.append)
-
-        self.worker.finished.connect(self.thread.quit)
-
-        self.thread.finished.connect(self.thread.deleteLater)
-
-        self.worker.finished.connect(self.worker.deleteLater)
-
-        self.worker.finished.connect(self.upload_finished)
-
-        self.thread.start()
-
-        
-#API Worker  calls the API 
-class UploadWorker(QObject):
-
-    progress = pyqtSignal(int)
-
-    log = pyqtSignal(str)
-
-    finished = pyqtSignal()
-
-    def __init__(self, files, settings):
-        super().__init__()
-
-        self.files = files
-        self.settings = settings
-
-    def run(self):
+        settings = {
+            "conf": self.conf.value(),
+            "labels": self.labels.text(),
+            "do_ocr": self.do_ocr.currentText(),
+            "do_zs": self.do_zs.currentText(),
+        }
 
         for i, image in enumerate(self.files):
+            self.log.append(f"Evaluating image {i + 1} of {len(self.files)}")
+            response = requests.post(
+                "http://127.0.0.1:8000/pipeline",
+                data=settings,
+                files={"file": open(image, "rb")},
+            )
+            data = response.json()
+            fmt_response = json.dumps(data)
+            self.log.append(f"Image {i + 1} response:\n{fmt_response}\n")
+            self.table.setItem(i, 1, QTableWidgetItem("Evaluated"))
+            self.progress.setValue(int((i + 1) / len(self.files) * 100))
 
-            #
-            # API CALL GOES HERE
-            #
-
-            self.log.emit(f"Finished {image}")
-
-            self.progress.emit(i+1)
-
-        self.finished.emit()        
+        self.log.append("All images evaulated successfully.")
 
 
-
-#This is the setting tab
-class SettingsTab(QWidget):
-    def __init__(self, audio_output):
-        super().__init__()
-        self.audio_output = audio_output
-        layout = QFormLayout(self)
-        self.volume = QSlider(Qt.Orientation.Horizontal)
-        self.volume.setRange(0, 100)
-        self.volume.setValue(15)
-        self.volume.valueChanged.connect(
-            lambda v: self.audio_output.setVolume(v/100)
-        )
-        layout.addRow("Music Volume", self.volume)
-        layout.addRow(QCheckBox("Enable Startup Voice"))
-        layout.addRow(QCheckBox("Launch Full Screen"))
-
-#This sets the Top banner image
+# This sets the Top banner image
 class Banner(QLabel):
     def __init__(self, pixmap):
         super().__init__()
@@ -943,11 +690,12 @@ class Banner(QLabel):
             self.width(),
             self.height(),
             Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-            Qt.TransformationMode.SmoothTransformation
+            Qt.TransformationMode.SmoothTransformation,
         )
         self.setPixmap(scaled)
 
-#The Main Window code brings all the pieces together. 
+
+# The Main Window code brings all the pieces together.
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -956,10 +704,10 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(bg)
 
         root = QVBoxLayout(bg)
-        root.setContentsMargins(0,0,0,0)
+        root.setContentsMargins(0, 0, 0, 0)
 
         banner = QLabel()
-        pix = QPixmap("data/assets/knight banner.jpg")
+        pix = QPixmap("data/assets/BWXT_Border.png")
 
         banner.setFixedHeight(100)
         banner.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -969,9 +717,10 @@ class MainWindow(QMainWindow):
 
         # Scale image down (not up)
         scaled_pix = pix.scaled(
-            800, 150,  # <-- control image size here
+            800,
+            150,  # <-- control image size here
             Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation
+            Qt.TransformationMode.SmoothTransformation,
         )
 
         banner.setPixmap(scaled_pix)
@@ -982,33 +731,11 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout(glass)
 
-
-         # ---------------------------------
-        # Background Music
-        # Orginial audio player 
-        # ---------------------------------
-        self.audio_output = QAudioOutput()
-        self.music_player = QMediaPlayer()
-        self.music_player.setAudioOutput(self.audio_output)
-
-        music_file = os.path.abspath("data/assets/Knight_Rider.wav")
-        self.music_player.setSource(QUrl.fromLocalFile(music_file))
-
-        self.audio_output.setVolume(0.15)
-
-        # ✅ Proper Qt6 looping (NO helper function needed)
-        self.music_player.setLoops(QMediaPlayer.Loops.Infinite)
-
-        self.music_player.play()
-        #-----------------------------------
-
-
         self.tabs = QTabWidget()
         self.tabs.setTabPosition(QTabWidget.TabPosition.South)
 
         self.tabs.addTab(LicensePlateTab(), "SEARCH")
         self.tabs.addTab(UploadTab(), "UPLOAD")
-        self.tabs.addTab(SettingsTab(self.audio_output), "SETTINGS")
 
         layout.addWidget(self.tabs)
 
@@ -1031,12 +758,7 @@ class MainWindow(QMainWindow):
         }
         """)
 
-# #KITT voice orginial code  
-
-        self.tts = QTextToSpeech()
-        self.tts.say("Knight Industries Vehicle Location System. Online.")
-
-#This make the esc button exit the dashboard
+    # This make the esc button exit the dashboard
     def keyPressEvent(self, event):
 
         if event.key() == Qt.Key.Key_Escape:
@@ -1044,7 +766,8 @@ class MainWindow(QMainWindow):
 
         super().keyPressEvent(event)
 
-#Makes is run Full Screen                 
+
+# Makes is run Full Screen
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
