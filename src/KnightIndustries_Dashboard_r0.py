@@ -664,7 +664,8 @@ class UploadTab(QWidget):
         for i, image in enumerate(self.files):
             self.log.append(f"Evaluating image {i + 1} of {len(self.files)}")
             response = requests.post(
-                "http://127.0.0.1:8000/pipeline",
+                # "http://127.0.0.1:8000/pipeline",
+                "http://172.31.116.111:8000/pipeline",
                 data=settings,
                 files={"file": open(image, "rb")},
             )
