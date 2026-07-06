@@ -40,6 +40,21 @@ def search4id(metadata, search_text):
         filtered_df["avg_confidence"].tolist()
     )
 
+# Used in the metadata function
+def safe_literal_eval(x):
+    try:
+        result = literal_eval(x)
+
+        if isinstance(result, list):
+            return result
+        elif isinstance(result(int,float)):
+            return [result]
+        else:
+            return []
+    except:
+        return []
+        # print(f"Error calling literal_eval on {x} of type {type(x)}")
+
 # Reads output of OCR data and returns dictionary for GUI
 def get_metadata(route = 'csv'):
     # Read in OCR results file
@@ -48,9 +63,15 @@ def get_metadata(route = 'csv'):
         df = pd.read_csv(Path(f"{Path.cwd().parent}/data/cvp_model_results.csv"))
     else:
         print("Reading database")
-        df = pd.read_sql(Path(f"{Path.cwd().parent}/data/cvp_model_results.db"))
+        query = '''
+        SELECT *
+        FROM cvp_results
+        '''
+        conn = f'sqlite:///../data/cvp_database.db'
+        df = pd.read_sql(query, conn)
+    
     # Cleans up the dataframe columns for processing
-    df["ocr_confidence"] = df["ocr_confidence"].apply(lambda x: literal_eval(x) if pd.notna(x) else [])
+    df["ocr_confidence"] = df["ocr_confidence"].apply(safe_literal_eval)
     df["ocr_text_list"] = df["ocr_text"].apply(lambda x: list(x) if isinstance(x, str) else [])
 
     # This uses the literal_eval function to convert the columns from strings to lists or dictionaries
@@ -63,10 +84,9 @@ def get_metadata(route = 'csv'):
     for index, row in df.iterrows():
         #Cleaning up scores for each type of vehicle
         confidence = row["ocr_confidence"]
-        text = row["ocr_text_list"]
-
+        text = list(row["ocr_text_list"])
         if confidence and text:
-            trimmed_confidence = confidence[:len(confidence)]
+            trimmed_confidence = confidence[:len(text)] # TODO
             min_char, min_confidence = min(zip(text,trimmed_confidence), key=lambda x: x[1])
         else:
             min_char, min_confidence = None,0
@@ -75,9 +95,13 @@ def get_metadata(route = 'csv'):
         confs = pd.Series(trimmed_confidence)
         letter_confidence = pd.concat([letters, confs], axis=1)
 
+        if row["ocr_region_confidence"] is None:
+            row["ocr_region_confidence"] = 0.0
+
         # This creates a record to process some of the data, later to be transformed into a dataframe
         record = {
-            "file_name" : row["file_name"],
+            "file_name" : row["index"],
+            "ocr_region_confidence": row["ocr_region_confidence"] if not row["ocr_region_confidence"] == "NA" else 0,
             "avg_confidence" : sum(row["ocr_confidence"])/len(row["ocr_confidence"]) if row["ocr_confidence"] else 0,
             "min confidence" : min_confidence,
             "min confidence char" : min_char,
@@ -93,13 +117,13 @@ def get_metadata(route = 'csv'):
         records.append(record)
     
     # This creates the final dataframe to process
-    columns_to_drop = ["vehicle", "no vehicle", "car", "bus", "truck", "motorcycle", "only license plate", "yolo_class_id", "ocr_bbox", "ocr_text_list"]
+    columns_to_drop = ["vehicle", "no vehicle", "car", "bus", "truck", "motorcycle", "only license plate", "yolo_class_id", "ocr_bbox", "ocr_text_list", "ocr_region_confidence"]
     df2 = pd.DataFrame(records)
     df = df.drop(columns=columns_to_drop)
-    df_final = pd.merge(df, df2, on='file_name')
+    df_final = pd.merge(df, df2, on='index')
 
     #This line calculates the average confidence for each region
-    region_avg_confidence = df_final.groupby('ocr_region')['ocr_region_confidence'].mean().sort_values(ascending=False)
+    region_avg_confidence = df_final.groupby('ocr_region')['ocr_region_confidence'].mean()
 
     #This line counts the number of times each character appears in the dataset
     region_counts = df_final["ocr_region"].value_counts()
