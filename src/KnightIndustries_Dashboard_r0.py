@@ -1,20 +1,21 @@
 # Knight Industries Dashboard License plate recognition and search system
 # r0
 
-from pathlib import Path
 import os
 import sys
-import pandas as pd
-import numpy as np
 import cv2
 import ast
+import json
 import requests
+import numpy as np
+import pandas as pd
+from pathlib import Path
 from sqlalchemy import create_engine
 
 
-from PyQt6.QtCore import Qt, QTimer, QRectF
+from PyQt6.QtCore import Qt
 
-from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor, QLinearGradient
+from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor
 
 from PyQt6.QtWidgets import (
     QTextEdit,
@@ -125,35 +126,6 @@ class BackgroundWidget(QWidget):
         painter.fillRect(self.rect(), QColor(0, 0, 0, 120))
 
 
-# This is the KITT-style scanner
-class KITTScanner(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.pos = 0
-        self.direction = 1
-        self.setMinimumHeight(45)
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.animate)
-        self.timer.start(15)
-
-    def animate(self):
-        self.pos += self.direction * 8
-        if self.pos > self.width() - 120:
-            self.direction = -1
-        if self.pos < 0:
-            self.direction = 1
-        self.update()
-
-    def paintEvent(self, event):
-        p = QPainter(self)
-        p.fillRect(self.rect(), QColor(10, 10, 10))
-        grad = QLinearGradient(self.pos, 0, self.pos + 120, 0)
-        grad.setColorAt(0.0, QColor(255, 0, 0, 0))
-        grad.setColorAt(0.5, QColor(255, 0, 0, 255))
-        grad.setColorAt(1.0, QColor(255, 0, 0, 0))
-        p.fillRect(QRectF(self.pos, 8, 120, 25), grad)
-
-
 # This is the image viewer on the main page
 class ImageViewer(QGraphicsView):
     def __init__(self):
@@ -217,8 +189,6 @@ class LicensePlateTab(QWidget):
         """)
 
         layout.addWidget(subtitle)
-
-        layout.addWidget(KITTScanner())
 
         self.search = QLineEdit()
         self.search.setPlaceholderText("Enter Vehicle Search")
@@ -673,8 +643,7 @@ class UploadTab(QWidget):
             self.table.insertRow(row)
             self.table.setItem(row, 0, QTableWidgetItem(path.name))
             self.table.setItem(row, 1, QTableWidgetItem("Queued"))
-            self.table.setItem(row, 2, QTableWidgetItem(""))
-            self.table.setItem(row, 3, QTableWidgetItem(f"{size_kb:.1f}"))
+            self.table.setItem(row, 2, QTableWidgetItem(f"{size_kb:.1f}"))
 
         self.uploadButton.setEnabled(True)
 
@@ -699,8 +668,10 @@ class UploadTab(QWidget):
                 data=settings,
                 files={"file": open(image, "rb")},
             )
-
-            self.log.append(f"Image {i + 1} response:\n{response.content}\n")
+            data = response.json()
+            fmt_response = json.dumps(data)
+            self.log.append(f"Image {i + 1} response:\n{fmt_response}\n")
+            self.table.setItem(i, 1, QTableWidgetItem("Evaluated"))
             self.progress.setValue(int((i + 1) / len(self.files) * 100))
 
         self.log.append("All images evaulated successfully.")
@@ -735,25 +706,25 @@ class MainWindow(QMainWindow):
         root = QVBoxLayout(bg)
         root.setContentsMargins(0, 0, 0, 0)
 
-        # banner = QLabel()
-        # pix = QPixmap("data/assets/knight banner.jpg")
+        banner = QLabel()
+        pix = QPixmap("data/assets/BWXT_Border.png")
 
-        # banner.setFixedHeight(100)
-        # banner.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        banner.setFixedHeight(100)
+        banner.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        # # IMPORTANT: do NOT stretch image
-        # banner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # IMPORTANT: do NOT stretch image
+        banner.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # # Scale image down (not up)
-        # scaled_pix = pix.scaled(
-        #     800,
-        #     150,  # <-- control image size here
-        #     Qt.AspectRatioMode.KeepAspectRatio,
-        #     Qt.TransformationMode.SmoothTransformation,
-        # )
+        # Scale image down (not up)
+        scaled_pix = pix.scaled(
+            800,
+            150,  # <-- control image size here
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
 
-        # banner.setPixmap(scaled_pix)
-        # root.addWidget(banner)
+        banner.setPixmap(scaled_pix)
+        root.addWidget(banner)
 
         glass = QWidget()
         root.addWidget(glass)
