@@ -16,7 +16,7 @@ import sqlite3
 from sqlalchemy import create_engine
 
 
-from PyQt6.QtCore import Qt, QObject, QTimer, QRectF, QUrl, pyqtSignal
+from PyQt6.QtCore import Qt, QObject, QTimer, QThread, QRectF, QUrl, pyqtSignal
 
 from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor, QLinearGradient
 
@@ -47,6 +47,7 @@ from PyQt6.QtWidgets import (
     QGraphicsView,
     QGraphicsScene,
     QGraphicsPixmapItem,
+    QDoubleSpinBox
 )
 
 
@@ -623,49 +624,42 @@ class UploadTab(QWidget):
 
         form = QFormLayout()
         #These boxes need to be linked to API calls.  So it can "dynamically build the API call."
-        self.modelCombo = QComboBox()
-        self.modelCombo.addItems([
-            "gpt-5",
-            "gpt-5-mini"
+        #OCR
+        self.do_ocr = QComboBox()
+        self.do_ocr.addItems([
+            "true",
+            "false"
         ])
-
-        self.promptEdit = QTextEdit()
-        self.promptEdit.setMaximumHeight(80)
-        self.promptEdit.setPlainText(
-            "Describe this image and identify any relevant objects."
-        )
-
-        self.caseNumber = QLineEdit()
-
-        self.priority = QComboBox()
-        self.priority.addItems([
-            "Low",
-            "Normal",
-            "High",
-            "Critical"
+        #Zero-Shot
+        self.do_zs = QComboBox()
+        self.do_zs.addItems([
+            "true",
+            "false"
         ])
+        #Confidence
+        self.conf= QDoubleSpinBox()
+        self.conf.setRange(0.0, 1.0)
+        #ZS-Prob Threshold
+        self.prob_thres= QDoubleSpinBox()
+        self.prob_thres.setRange(0.0, 1.0)
 
-        self.evidenceType = QComboBox()
-        self.evidenceType.addItems([
-            "License Plate",
-            "Vehicle",
-            "Person",
-            "Document",
-            "General"
-        ])
+        #Labels
+        self.labels = QLineEdit()
+        self.labels.setPlaceholderText("Comma-seperated values for Zero-Shot")
 
-        self.outputFormat = QComboBox()
-        self.outputFormat.addItems([
-            "JSON",
-            "Text"
-        ])
+        self.zslabel = QLineEdit()
+        self.zslabel.setPlaceholderText("Selected from Labels")
 
-        form.addRow("AI Model", self.modelCombo)
-        form.addRow("Prompt", self.promptEdit)
-        form.addRow("Case Number", self.caseNumber)
-        form.addRow("Evidence Type", self.evidenceType)
-        form.addRow("Priority", self.priority)
-        form.addRow("Output", self.outputFormat)
+
+       
+
+                
+        form.addRow("Confidence", self.conf)
+        form.addRow("Labels", self.labels)
+        form.addRow("Zero Shot Label", self.zslabel)
+        form.addRow("Zero Shot Probability Threshold", self.prob_thres)
+        form.addRow("OCR", self.do_ocr)
+        form.addRow("Zero-Shot", self.do_zs)
 
         missionBox.setLayout(form)
 
@@ -833,17 +827,24 @@ class UploadTab(QWidget):
     def get_mission_settings(self):
 
         return {
-        "model": self.modelCombo.currentText(),
-        "prompt": self.promptEdit.toPlainText(),
-        "case_number": self.caseNumber.text(),
-        "priority": self.priority.currentText(),
-        "evidence_type": self.evidenceType.currentText(),
-        "output_format": self.outputFormat.currentText(),
+        "conf": self.conf.value(),
+        "labels": self.labels.text(),
+        "zs_label": self.zslabel.text(),
+        "zs_prob_thres": self.prob_thres.value(),
+        "do_ocr": self.do_ocr.currentText(),
+        "do_zs": self.do_zs.currentText(),
         }
 
     def start_upload(self):
 
         settings = self.get_mission_settings()
+
+        for image in self.files:
+            requests.post(
+                "http://127.0.0.1:8000/pipeline",
+                data=settings,
+                files={"file": open(image, "rb")}
+            )
 
         self.thread = QThread()
 
@@ -901,10 +902,12 @@ class UploadWorker(QObject):
     def run(self):
 
         for i, image in enumerate(self.files):
-
-            #
-            # API CALL GOES HERE
-            #
+            print(i, image)
+            requests.post(
+                "http://127.0.0.1:8000/pipeline",
+                data=self.settings,
+                files={"file": open(image, "rb")}
+            )
 
             self.log.emit(f"Finished {image}")
 
