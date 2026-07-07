@@ -662,7 +662,6 @@ class UploadTab(QWidget):
         }
 
         for i, image in enumerate(self.files):
-            self.log.append(f"\nEvaluating image {i + 1} of {len(self.files)}")
             response = requests.post(
                 f"http://172.31.116.150:8000/pipeline?conf={settings['conf']}&labels={settings['labels']}&do_zs={settings['do_zs']}&do_ocr={settings['do_ocr']}",
                 data=settings,
@@ -673,7 +672,7 @@ class UploadTab(QWidget):
                 key: f"{(value * 100):.2f}%"
                 for key, value in data["zs_results"][0].items()
             }
-            self.log.append(f"Image {i + 1} response:")
+            self.log.append(f"\nImage {i + 1}/{len(self.files)} - {image}:")
             for i in range(len(data["bounding_boxes"])):
                 self.log.append(f"Bounding box: {data["bounding_boxes"][i]}")
                 self.log.append(f"Class ID: {data["class_ids"][i]}")
