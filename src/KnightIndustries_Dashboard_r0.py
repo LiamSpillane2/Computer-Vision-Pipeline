@@ -525,7 +525,7 @@ class UploadTab(QWidget):
         # These boxes need to be linked to API calls.  So it can "dynamically build the API call."
         # Confidence
         self.conf = QDoubleSpinBox()
-        self.conf.setValue(0.75)
+        self.conf.setValue(0.50)
         self.conf.setRange(0.0, 1.0)
         self.conf.setSingleStep(0.01)
         # Labels
@@ -533,10 +533,10 @@ class UploadTab(QWidget):
         self.labels.setPlaceholderText("Comma-seperated values for Zero-Shot")
         # OCR
         self.do_ocr = QComboBox()
-        self.do_ocr.addItems(["true", "false"])
+        self.do_ocr.addItems(["True", "False"])
         # Zero-Shot
         self.do_zs = QComboBox()
-        self.do_zs.addItems(["true", "false"])
+        self.do_zs.addItems(["True", "False"])
 
         form.addRow("Bounding Box Confidence", self.conf)
         form.addRow("Zero-Shot Labels", self.labels)
@@ -655,27 +655,43 @@ class UploadTab(QWidget):
     def start_upload(self):
 
         settings = {
-            "conf": self.conf.value(),
+            "conf": float(self.conf.value()),
             "labels": self.labels.text(),
-            "do_ocr": self.do_ocr.currentText(),
-            "do_zs": self.do_zs.currentText(),
+            "do_ocr": bool(self.do_ocr.currentText()),
+            "do_zs": bool(self.do_zs.currentText()),
         }
 
         for i, image in enumerate(self.files):
-            self.log.append(f"Evaluating image {i + 1} of {len(self.files)}")
+            self.log.append(f"\nEvaluating image {i + 1} of {len(self.files)}")
             response = requests.post(
-                # "http://127.0.0.1:8000/pipeline",
-                "http://172.31.116.111:8000/pipeline",
+                f"http://172.31.116.150:8000/pipeline?conf={settings['conf']}&labels={settings['labels']}&do_zs={settings['do_zs']}&do_ocr={settings['do_ocr']}",
                 data=settings,
                 files={"file": open(image, "rb")},
             )
             data = response.json()
-            fmt_response = json.dumps(data)
-            self.log.append(f"Image {i + 1} response:\n{fmt_response}\n")
+            zs_data = {
+                key: f"{(value * 100):.2f}%"
+                for key, value in data["zs_results"][0].items()
+            }
+            self.log.append(f"Image {i + 1} response:")
+            for i in range(len(data["bounding_boxes"])):
+                self.log.append(f"Bounding box: {data["bounding_boxes"][i]}")
+                self.log.append(f"Class ID: {data["class_ids"][i]}")
+                self.log.append(f"Confidence: {(data["confidences"][i] * 100):.2f}%")
+                ocr_data = data["ocr_predictions"][0][i]
+                if settings["do_ocr"] == True and ocr_data["ocr_bbox"] != "NA":
+                    self.log.append(f"Extracted Text: {ocr_data["ocr_text"]}")
+                    self.log.append(f"License Plate Region: {ocr_data["ocr_region"]}")
+                    self.log.append(
+                        f"Region Confidence: {ocr_data["ocr_region_confidence"]:.2f}%"
+                    )
+            if settings["do_zs"] == True:
+                self.log.append(f"Zero-Shot Results: {zs_data}")
             self.table.setItem(i, 1, QTableWidgetItem("Evaluated"))
             self.progress.setValue(int((i + 1) / len(self.files) * 100))
 
-        self.log.append("All images evaulated successfully.")
+        self.progress.setValue(100)
+        self.log.append("\nAll images evaulated successfully.")
 
 
 # This sets the Top banner image

@@ -241,7 +241,7 @@ def run_classification(
         df = pd.DataFrame(predictions).T
         df.columns = df.iloc[-1]
         df = df[:-1]
-        df["fn"] = file_name
+        # df["fn"] = file_name
         prob_list.append(df)
 
     return pd.concat(prob_list, ignore_index=True)
