@@ -5,7 +5,6 @@ import os
 import sys
 import cv2
 import ast
-import json
 import requests
 import numpy as np
 import pandas as pd
@@ -45,11 +44,6 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox,
 )
 
-# All this magic to make the Utils folder work.
-# ----------------------------------
-import sys
-from pathlib import Path
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 from utils.dashboard_utils import search4id
@@ -59,20 +53,13 @@ from utils.dashboard_utils import search4id
 BACKGROUND_OPACITY = 0.80
 
 route = "sql"
-# Temp loading location of license plate data
-if route == "csv":
-
-    df = pd.read_csv(r"./data/JackExampleData/aplr_ocr_results.csv")
-
-else:
-    query = """
-    SELECT * 
-    FROM cvp_results
-    """
-    conn_str = Path(__file__).parent / "../data/cvp_database.db"
-    engine = create_engine(f"sqlite:///{conn_str}")
-    df = pd.read_sql(query, engine)
-    # df=pd.read_sql(r"./data/JackExampleData/aplr_ocr_results.db")
+query = """
+SELECT * 
+FROM cvp_results
+"""
+conn_str = Path(__file__).parent / "../data/cvp_database.db"
+engine = create_engine(f"sqlite:///{conn_str}")
+df = pd.read_sql(query, engine)
 
 df = df.dropna(subset=["ocr_confidence"])
 
@@ -110,7 +97,7 @@ DEFAULT_COLUMNS = [
 class BackgroundWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.bg = QPixmap("data/assets/Bwxt_backgrnd.jpg")
+        self.bg = QPixmap("src/assets/Bwxt_backgrnd.jpg")
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -164,7 +151,6 @@ class LicensePlateTab(QWidget):
         layout = QVBoxLayout(self)
 
         self.setWindowTitle("BDSC COMPUTER VISION PIPELINE DASHBOARD")
-        # self.resize(1800, 1000)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self.setStyleSheet("""
@@ -177,9 +163,7 @@ class LicensePlateTab(QWidget):
             background: transparent;
         }
         """)
-        # ---------------------------------
-        # Subtitle (keep or remove)
-        # ---------------------------------
+
         subtitle = QLabel("VEHICLE LOCATION SYSTEM")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -253,8 +237,6 @@ class LicensePlateTab(QWidget):
         # RIGHT PANEL This is where the table will appear with metadata
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
-
-        # right_panel.setStyleSheet("border:none;")
 
         db_label = QLabel("VEHICLE DATABASE")
         db_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -364,20 +346,12 @@ class LicensePlateTab(QWidget):
             # ----------------------------------
             # Load first matching image
             # ----------------------------------
-            import cv2
-            import ast
-
             first_img = os.path.join(imagedir, img_name[0] + ".jpg")
-
-            img = cv2.imread(first_img)
 
             # Get first matching dataframe row
             row_dict = dict(zip(df.columns, results[0]))
 
             bbox = ast.literal_eval(row_dict["yolo_xy_coords"])
-
-            # Assuming format = [x1, x2, y1, y2]
-            x1, y1, x2, y2 = bbox
 
             bbox = ast.literal_eval(row_dict["yolo_xy_coords"])
             self.load_image_with_bbox(first_img, bbox)
@@ -419,8 +393,6 @@ class LicensePlateTab(QWidget):
                     self.table.setItem(r, c, QTableWidgetItem(str(value)))
 
     def load_image_with_bbox(self, image_path, bbox=None):
-        import cv2
-
         img = cv2.imread(image_path)
 
         if bbox is not None:
@@ -434,8 +406,6 @@ class LicensePlateTab(QWidget):
 
     def on_thumbnail_click(self, image_path):
         # You likely need to look up bbox from df using image name
-        import ast
-
         name = os.path.splitext(os.path.basename(image_path))[0]
 
         row = df[df["file_name"] == name]
@@ -503,7 +473,7 @@ class UploadTab(QWidget):
             }
         """)
 
-        mainLayout = QVBoxLayout(self)
+        mainLayout = QGridLayout(self)
 
         ##################################################################
         # TITLE
@@ -513,7 +483,7 @@ class UploadTab(QWidget):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size:18pt;font-weight:bold;")
 
-        mainLayout.addWidget(title)
+        mainLayout.addWidget(title, 0, 0, 1, 2)
 
         ##################################################################
         # PARAMETERS
@@ -545,7 +515,7 @@ class UploadTab(QWidget):
 
         missionBox.setLayout(form)
 
-        mainLayout.addWidget(missionBox)
+        mainLayout.addWidget(missionBox, 1, 0, 1, 1)
 
         ##################################################################
         # IMAGE QUEUE
@@ -560,7 +530,7 @@ class UploadTab(QWidget):
         )
         queueLayout.addWidget(self.table)
         queueBox.setLayout(queueLayout)
-        mainLayout.addWidget(queueBox)
+        mainLayout.addWidget(queueBox, 2, 0, 1, 1)
 
         ##################################################################
         # UPLOAD CONTROL
@@ -594,7 +564,28 @@ class UploadTab(QWidget):
 
         controlBox.setLayout(controlLayout)
 
-        mainLayout.addWidget(controlBox)
+        mainLayout.addWidget(controlBox, 3, 0, 1, 1)
+
+        ##################################################################
+        # IMAGE DISPLAY
+        ##################################################################
+
+        imageDisplay = QGroupBox("IMAGE DISPLAY")
+        imageLayout = QVBoxLayout()
+
+        self.imageLabel = QLabel()
+        self.imageLabel.setFixedHeight(400)
+        self.imagePix = QPixmap("src/assets/clip-art-car.jpg").scaled(
+            self.imageLabel.width(),
+            self.imageLabel.height(),
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+        )
+        self.imageLabel.setPixmap(self.imagePix)
+
+        imageLayout.addWidget(self.imageLabel)
+        imageDisplay.setLayout(imageLayout)
+
+        mainLayout.addWidget(imageDisplay, 1, 1, 3, 1)
 
         ##################################################################
         # PROGRESS LOG
@@ -611,7 +602,7 @@ class UploadTab(QWidget):
 
         logBox.setLayout(logLayout)
 
-        mainLayout.addWidget(logBox)
+        mainLayout.addWidget(logBox, 4, 0, 1, 2)
 
         ##################################################################
         # SIGNALS
@@ -687,6 +678,12 @@ class UploadTab(QWidget):
             if settings["do_zs"] == True:
                 self.log.append(f"Zero-Shot Results: {zs_data}")
             self.table.setItem(i, 1, QTableWidgetItem("Evaluated"))
+            self.imagePix = QPixmap(image).scaled(
+                self.imageLabel.width(),
+                self.imageLabel.height(),
+                Qt.AspectRatioMode.IgnoreAspectRatio,
+            )
+            self.imageLabel.setPixmap(self.imagePix)
             self.progress.setValue(int((i + 1) / len(self.files) * 100))
 
         self.progress.setValue(100)
@@ -723,7 +720,7 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
 
         banner = QLabel()
-        pix = QPixmap("data/assets/BWXT_Border.png")
+        pix = QPixmap("src/assets/BWXT_Border.png")
 
         banner.setFixedHeight(100)
         banner.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
